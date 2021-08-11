@@ -2,7 +2,7 @@
 
 name=tracy
 comp=gcc
-src=*.c
+src=src/*.c
 std='-std=c99'
 
 flags=(
