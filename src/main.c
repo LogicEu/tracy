@@ -22,7 +22,7 @@ static Sphere s_Spheres[] = {
 
 const int kSphereCount = sizeof(s_Spheres) / sizeof(s_Spheres[0]);
 
-static Material s_SphereMats[kSphereCount] = {
+static Material s_SphereMats[] = {
     { Lambert, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 },
     { Lambert, {0.8f, 0.4f, 0.4f}, {0, 0, 0}, 0, 0 },
     { Lambert, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
@@ -37,10 +37,6 @@ static Material s_SphereMats[kSphereCount] = {
 const float kMinT = 0.001f;
 const float kMaxT = 1.0e7f;
 const int kMaxDepth = 10;
-
-//void InitializeTest();
-//void ShutdownTest();
-//void DrawTest(float time, int frameCount, int screenWidth, int screenHeight, float* backbuffer, int* outRayCount);
 
 float schlick(float cosine, float ri)
 {
@@ -290,7 +286,7 @@ int main(int argc, char** argv)
 {   
     int ray_count = 0, iters = 10;
     uint32_t width = 400, height = 400;
-    char path[128] = "out.gif", op[128] = "open ";
+    char path[128] = "out.gif", op[128];
 
     if (argc > 1) width = (uint32_t)atoi(argv[1]);
     if (argc > 2) height = (uint32_t)atoi(argv[2]);
@@ -317,7 +313,13 @@ int main(int argc, char** argv)
     gif_file_write(path, gif);
     //gif_free(gif);
     free(backbuffer);
+
+#ifdef __APPLE__
+    strcpy(op, "open ");
+#else 
+    strcpy(op, "xdg-open ");
+#endif
     strcat(op, path);
     system(op);
-    return 0;
+    return EXIT_SUCCESS;
 }
