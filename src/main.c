@@ -1,11 +1,12 @@
 #include <tracy.h>
 #include <imgtool.h>
 #include <stdlib.h>
+#include <string.h>
 
-#define DO_SAMPLES_PER_PIXEL 100
+#define DO_SAMPLES_PER_PIXEL 10
 #define DO_ANIMATE 0
 #define DO_ANIMATE_SMOOTHING 0.0f
-#define DO_LIGHT_SAMPLING 10
+#define DO_LIGHT_SAMPLING 100
 
 static Sphere s_Spheres[] = {
     {{0, -100.5, -1}, 100, 0.0f},
@@ -16,7 +17,7 @@ static Sphere s_Spheres[] = {
     {{0, 0, 1}, 0.5f, 0.0f},
     {{-2, 0, 1}, 0.5f, 0.0f},
     {{0.5f, 1, 0.5f}, 0.5f, 0.0f},
-    {{-1.5f, 1.5f, 0.f}, 0.3f, 0.0f}
+    {{-1.5f, 3.5f, 0.f}, 0.3f, 0.0f}
 };
 
 const int kSphereCount = sizeof(s_Spheres) / sizeof(s_Spheres[0]);
@@ -30,7 +31,7 @@ static Material s_SphereMats[kSphereCount] = {
     { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.2f, 0 },
     { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.6f, 0 },
     { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
-    { Lambert, {0.8f, 0.6f, 0.2f}, {30, 25, 15}, 0, 0 }
+    { Lambert, {0.8f, 0.6f, 0.2f}, {100, 50, 30}, 0, 0 }
 };
 
 const float kMinT = 0.001f;
@@ -118,7 +119,7 @@ static bool Scatter(Material* mat, Ray* r_in, Hit* rec, vec3* attenuation, Ray* 
 #endif
         return true;
     }
-    else if (mat->type ==Metal)
+    else if (mat->type == Metal)
     {
         AssertUnit(r_in->dir); AssertUnit(rec->normal);
         vec3 refl = vec3_reflect(r_in->dir, rec->normal);
@@ -254,8 +255,8 @@ void DrawTest(float time, int frameCount, int screenWidth, int screenHeight, flo
     s_Spheres[1].center.y = cosf(time)+1.0f;
     s_Spheres[8].center.z = sinf(time)*0.3f;
 #endif
-    vec3 lookfrom = {0.0, 2.0, 3.0};
-    vec3 lookat = {0.0, 0.0, 0.0};
+    static vec3 lookfrom = {0.0, 2.0, 3.0};
+    static vec3 lookat = {0.0, 0.0, 0.0};
     float distToFocus = 3.0f;
     float aperture = 0.1f;
     
@@ -280,26 +281,43 @@ void DrawTest(float time, int frameCount, int screenWidth, int screenHeight, flo
     }
 
     *outRayCount = args.rayCount;
+
+    lookfrom.z += 0.04f;
+    s_Spheres[7].center.x -= 0.08;
 }
 
 int main(int argc, char** argv) 
 {   
-    int ray_count = 0;
+    int ray_count = 0, iters = 10;
     uint32_t width = 400, height = 400;
+    char path[128] = "out.gif", op[128] = "open ";
+
     if (argc > 1) width = (uint32_t)atoi(argv[1]);
     if (argc > 2) height = (uint32_t)atoi(argv[2]);
     float* backbuffer = (float*)malloc(sizeof(float) * width * height * 4);
     printf("Rendering path traced scene...\nwidth: %d\nheight: %d\n", width, height);
-    DrawTest(0.0, 1, width, height, backbuffer, &ray_count);
 
-    bmp_t bmp = bmp_new(width, height, 4);
-    for (int i = 0; i < width * height * 4; i++) {
-        bmp.pixels[i] = (uint8_t)(backbuffer[i] * 255.0f);
+    bmp_t bmps[iters];
+    for (int i = 0; i < iters; i++) {
+        int ray = 0;
+        printf("Rendering frame %d of %d\n", i + 1, iters);
+        DrawTest(0.0, 1, width, height, backbuffer, &ray);
+        ray_count += ray;
+        bmp_t bmp = bmp_new(width, height, 4);
+        for (int j = 0; j < width * height * 4; j++) {
+            bmp.pixels[j] = (uint8_t)(backbuffer[j] * 255.0f);
+        }
+        bmp_t tmp = bmp_flip_vertical(&bmp);
+        bmps[i] = bmp_transform(&tmp, 3);
+        bmp_free(&tmp);
+        bmp_free(&bmp);
     }
-    bmp_t tmp = bmp_flip_vertical(&bmp);
-    bmp_write("out.png", &tmp);
-    bmp_free(&tmp);
-    bmp_free(&bmp);
+
+    gif_t* gif = bmp_to_gif(&bmps[0], iters);
+    gif_file_write(path, gif);
+    //gif_free(gif);
     free(backbuffer);
+    strcat(op, path);
+    system(op);
     return 0;
 }
