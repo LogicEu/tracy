@@ -26,21 +26,19 @@ typedef struct Hit {
     float t;
 } Hit;
 
-typedef struct Sphere
-{   
+typedef struct Sphere {   
     vec3 center;
     float radius;
-    float invRadius;
 } Sphere;
 
 typedef enum {
     Lambert, 
     Metal,
     Dielectric
-} Type;
+} MatEnum;
 
 typedef struct Material {
-    Type type;
+    MatEnum type;
     vec3 albedo;
     vec3 emissive;
     float roughness;
@@ -58,7 +56,7 @@ typedef struct Camera {
 
 #define AssertUnit(v)                               \
 do {                                                \
-    if (!(fabsf(vec3_sqmag(v) - 1.0f) < 0.01f)) {  \
+    if (!(fabsf(vec3_sqmag(v) - 1.0f) < 0.01f)) {   \
         printf("%d, %s - ", __LINE__, __func__);    \
         vec3_print(v);                              \
     }                                               \
@@ -69,17 +67,16 @@ do {                                                \
 vec3 vec3_reflect(vec3 v, vec3 n);
 bool vec3_refract(vec3 v, vec3 n, float nint, vec3* outRefracted);
 
-vec3 RandomInUnitDisk();
-vec3 RandomInUnitSphere();
+vec3 random_in_disk();
+vec3 random_in_sphere();
 
 Ray ray_new(vec3 orig, vec3 dir);
-vec3 pointAt(Ray* r, float t);
+vec3 ray_at(Ray* ray, float t);
 
-void sphereUpdateDerivedData(Sphere* s);
-bool HitSphere(Ray* r, Sphere* s, float tMin, float tMax, Hit* outHit);
+bool sphere_hit(Ray* ray, Sphere* sphere, float tMin, float tMax, Hit* outHit);
 
 Camera camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
-Ray GetRay(Camera* cam, float s, float t);
+Ray camera_ray(Camera* cam, float s, float t);
 
 #ifdef __cplusplus
 }

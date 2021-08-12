@@ -1,35 +1,27 @@
 #include <tracy.h>
 
-void sphereUpdateDerivedData(Sphere* s) 
-{ 
-    s->invRadius = 1.0f / s->radius; 
-}
-
-bool HitSphere(Ray* r, Sphere* s, float tMin, float tMax, Hit* outHit)
+bool sphere_hit(Ray* ray, Sphere* sphere, float tMin, float tMax, Hit* outHit)
 {
-    assert(s->invRadius == 1.0f / s->radius);
-    AssertUnit(r->dir);
-    vec3 oc = vec3_sub(r->orig, s->center);
-    float b = vec3_dot(oc, r->dir);
-    float c = vec3_dot(oc, oc) - s->radius*s->radius;
-    float discr = b*b - c;
-    if (discr > 0)
-    {
+    AssertUnit(ray->dir);
+    vec3 oc = vec3_sub(ray->orig, sphere->center);
+    float b = vec3_dot(oc, ray->dir);
+    float c = vec3_dot(oc, oc) - sphere->radius * sphere->radius;
+    float discr = b * b - c;
+    if (discr > 0.0f) {
         float discrSq = sqrtf(discr);
         
         float t = (-b - discrSq);
-        if (t < tMax && t > tMin)
-        {
-            outHit->pos = pointAt(r, t);
-            outHit->normal = vec3_mult(vec3_sub(outHit->pos, s->center), s->invRadius);
+        if (t < tMax && t > tMin) {
+            outHit->pos = ray_at(ray, t);
+            outHit->normal = vec3_mult(vec3_sub(outHit->pos, sphere->center), 1.0f / sphere->radius);
             outHit->t = t;
             return true;
         }
+        
         t = (-b + discrSq);
-        if (t < tMax && t > tMin)
-        {
-            outHit->pos = pointAt(r, t);
-            outHit->normal = vec3_mult(vec3_sub(outHit->pos, s->center), s->invRadius);
+        if (t < tMax && t > tMin) {
+            outHit->pos = ray_at(ray, t);
+            outHit->normal = vec3_mult(vec3_sub(outHit->pos, sphere->center), 1.0f / sphere->radius);
             outHit->t = t;
             return true;
         }

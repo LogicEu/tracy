@@ -3,11 +3,11 @@
 Ray ray_new(vec3 orig, vec3 dir) 
 {
     AssertUnit(dir);
-    Ray r = {orig, dir};
-    return r;
+    Ray ray = {orig, dir};
+    return ray;
 }
 
-vec3 pointAt(Ray* r, float t) 
+vec3 ray_at(Ray* ray, float t) 
 { 
-    return vec3_add(r->orig, vec3_mult(r->dir, t)); 
+    return vec3_add(ray->orig, vec3_mult(ray->dir, t)); 
 }

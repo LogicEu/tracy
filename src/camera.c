@@ -17,9 +17,9 @@ Camera camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect
     return cam;
 }
 
-Ray GetRay(Camera* cam, float s, float t)
+Ray camera_ray(Camera* cam, float s, float t)
 {
-    vec3 rd = vec3_mult(RandomInUnitDisk(), cam->lensRadius);
+    vec3 rd = vec3_mult(random_in_disk(), cam->lensRadius);
     vec3 offset = vec3_add(vec3_mult(cam->u, rd.x), vec3_mult(cam->v, rd.y));
     vec3 p = vec3_add(cam->origin, offset);
     return ray_new(p, vec3_norm(vec3_sub(vec3_add(cam->lowerLeftCorner, vec3_add(vec3_mult(cam->horizontal, s), vec3_mult(cam->vertical, t))), p)));
