@@ -2,12 +2,14 @@
 #include <imgtool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <pthread.h>
 
-#define DO_SAMPLES_PER_PIXEL 10
+#define DO_SAMPLES_PER_PIXEL 100
 #define DO_ANIMATE 1
 #define DO_ANIMATE_SMOOTHING 0.1f
 #define DO_LIGHT_SAMPLING 1
+#define GET_TIME() ((float)clock() / CLOCKS_PER_SEC)
 
 static Sphere spheres[] = {
     {{0, -100.5, -1}, 100},
@@ -25,10 +27,10 @@ static Material materials[] = {
     { Lambert, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 },
     { Lambert, {0.8f, 0.4f, 0.4f}, {0, 0, 0}, 0, 0 },
     { Lambert, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
-    { Metal, {0.4f, 0.4f, 0.8f}, {0, 0, 0}, 0, 0 },
+    { Metal, {1.0f, 1.0f, 1.0f}, {0, 0, 0}, 0, 0 },
     { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
-    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.2f, 0 },
-    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.6f, 0 },
+    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.0f, 0 },
+    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.0f, 0 },
     { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
     { Lambert, {0.8f, 0.6f, 0.2f}, {30, 25, 15}, 0, 0 }
 };
@@ -175,7 +177,7 @@ typedef struct JobData {
     int screenWidth, screenHeight;
     float* backbuffer;
     Camera* cam;
-    int rayCount;
+    volatile int rayCount;
 } JobData;
 
 static JobData job;
@@ -185,8 +187,14 @@ static vec3 lookat = {0.0, 0.0, 0.0};
 static float distToFocus = 3.0f;
 static float aperture = 0.1f;
 
-static void frame_row_render(uint32_t start, uint32_t end)
+#define CLMPF(x) ((x) * ((x) < 1.0) + (float)(x >= 1.0))
+
+static void* frame_row_render(void* args)
 {
+    uint32_t* uarg = args;
+    uint32_t start = *(uarg++);
+    uint32_t end = *uarg;
+
     float* backbuffer = job.backbuffer + start * job.screenWidth * 3;
     float invWidth = 1.0f / job.screenWidth;
     float invHeight = 1.0f / job.screenHeight;
@@ -209,20 +217,48 @@ static void frame_row_render(uint32_t start, uint32_t end)
             
             vec3 prev = vec3_new(backbuffer[0], backbuffer[1], backbuffer[2]);
             col = vec3_add(vec3_mult(prev, lerpFac), vec3_mult(col, (1.0f - lerpFac)));
-            backbuffer[0] = col.x;
-            backbuffer[1] = col.y;
-            backbuffer[2] = col.z;
+            backbuffer[0] = CLMPF(col.x);
+            backbuffer[1] = CLMPF(col.y);
+            backbuffer[2] = CLMPF(col.z);
             backbuffer += 3;
         }
     }
     job.rayCount += rayCount;
+    return NULL;
 }
 
 static void frame_render()
 {   
     for (uint32_t i = 0; i < job.screenHeight; i++) {
         uint32_t start = i, end = i + 1;
-        frame_row_render(start, end);
+        uint32_t args[2];
+        args[0] = start;
+        args[1] = end;
+        frame_row_render(&args[0]);
+    }
+}
+
+static void frame_render_threaded(int thread_count)
+{
+    uint32_t chunk = job.screenHeight / thread_count;
+    uint32_t start = 0, end = chunk;
+
+    pthread_t threads[thread_count - 1];
+    uint32_t args[thread_count][2];
+    for (int i = 0; i < thread_count - 1; i++) {
+        args[i][0] = start;
+        args[i][1] = end;
+        pthread_create(&threads[i], NULL, *frame_row_render, &args[i][0]);
+        start += chunk;
+        end += chunk;
+    }
+
+    args[thread_count - 1][0] = start;
+    args[thread_count - 1][1] = end;
+    frame_row_render(&args[thread_count - 1][0]);
+
+    for (int i = 0; i < thread_count - 1; i++) {
+        pthread_join(threads[i], NULL);
     }
 }
 
@@ -234,17 +270,27 @@ void scene_update(float time)
 
 int main(int argc, char** argv) 
 {   
-    int ray_count = 0, iters = 10;
+    int ray_count = 0, iters = 10, threads = 20;
     uint32_t width = 400, height = 400;
     char path[128], op[128];
 
     if (argc > 1) width = (uint32_t)atoi(argv[1]);
     if (argc > 2) height = (uint32_t)atoi(argv[2]);
     if (argc > 3) iters = atoi(argv[3]);
+
+    if (!iters) {
+        printf("Frame count cannot be 0.\n");
+        return EXIT_FAILURE;
+    } else if (!threads) {
+        printf("Thread count cannot be 0.\n");
+        return EXIT_FAILURE;
+    } else if (!width || !height) {
+        printf("Width and height cannot be 0.\n");
+        return EXIT_FAILURE;
+    }
+
     float* backbuffer = (float*)malloc(sizeof(float) * width * height * 3);
-
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 60, (float)width / (float)height, aperture, distToFocus);
-
     job.frameCount = iters;
     job.screenWidth = width;
     job.screenHeight = height;
@@ -252,14 +298,15 @@ int main(int argc, char** argv)
     job.cam = &cam;
     job.rayCount = 0;
 
-    printf("Rendering path traced scene...\nwidth: %d\nheight: %d\n", width, height);
-
+    printf("Rendering path traced scene with %d threads...\nwidth: %d\nheight: %d\n", threads, width, height);
+    float time = GET_TIME();
     bmp_t bmps[iters];
     for (int i = 0; i < iters; i++) {
         int ray = 0;
         printf("Rendering frame %d of %d\n", i + 1, iters);
         scene_update((float)i * 0.1);
-        frame_render();
+        if (threads == 1) frame_render();
+        else frame_render_threaded(threads);
         ray_count += ray;
         bmp_t bmp = bmp_new(width, height, 3);
         for (int j = 0; j < width * height * 3; j++) {
@@ -268,6 +315,7 @@ int main(int argc, char** argv)
         bmps[i] = bmp_flip_vertical(&bmp);
         bmp_free(&bmp);
     }
+    printf("Rendered in %f\n", (GET_TIME() - time) / (float)threads);
 
     if (iters == 1) {
         strcpy(path, "out.png");

@@ -28,7 +28,7 @@ lib=(
 )
 
 mac_os=(
-    -mmacosx-version-min=10.10
+    #-mmacosx-version-min=10.10
 )
 
 fail() {
@@ -80,11 +80,9 @@ if [[ "$1" == "-build" ]]; then
     build
     exit
 elif [[ "$1" == "-comp" ]]; then
-    build
     comp
     exit
 elif [[ "$1" == "-run" ]]; then
-    build
     comp
     shift
     ./$name "$@"
