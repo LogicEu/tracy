@@ -12,17 +12,15 @@
 #define DO_ANIMATE_SMOOTHING 0.1f
 #define GET_TIME() ((float)clock() / CLOCKS_PER_SEC)
 
-static Triangle triangles[] = {
-    {{-1, 1, 3}, {1, 1, 3}, {0.5, 3, 2}, {0, 0, 0}}
-};
+static array_t* triangles;
 
 static Sphere spheres[] = {
-    {{0, -100.5, -1}, 100},
+    {{0, -105.5, -1}, 100},
     {{2, 1, -1}, 1.5f},
     {{0, 0, -1}, 0.5f},
     {{-2, 0, -1}, 0.5f},
     {{2, 0, 1}, 0.5f},
-    {{0, 0, 1}, 0.5f},
+    {{0, -1, 1}, 0.5f},
     {{-2, 0, 1}, 0.5f},
     {{-1.f, 1.5, 0.f}, 0.5f},
     {{0.0f, 3.5f, 4.f}, 0.5f}
@@ -40,7 +38,6 @@ static Material materials[] = {
     { Lambert, {0.8f, 0.8f, 0.8f}, {30, 20, 15}, 0, 0 }
 };
 
-const int triangle_count = sizeof(triangles) / sizeof(triangles[0]);
 const int sphere_count = sizeof(spheres) / sizeof(spheres[0]);
 const float kMinT = 0.001f;
 const float kMaxT = 1.0e7f;
@@ -66,12 +63,12 @@ static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
             *outID = i;
         }
     }
-    for (int i = 0; i < triangle_count; i++) {
-        if (triangle_hit(r, triangles[i], tMin, closest, &tmpHit)) {
+    for (int i = 0; i < triangles->used; i++) {
+        if (triangle_hit(r, array_index(triangles, i), tMin, closest, &tmpHit)) {
             anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
-            *outID = 7;
+            *outID = 0;
         }
     }
     return anything;
@@ -194,9 +191,9 @@ typedef struct JobData {
 
 static JobData job;
 static Camera cam;
-static vec3 lookfrom = {0.0, 1.5, 6.0};
+static vec3 lookfrom = {0.0, 1.5, 3.0};
 static vec3 lookat = {0.0, 0.0, 0.0};
-static float distToFocus = 6.0f;
+static float distToFocus = 2.5f;
 static float aperture = 0.1f;
 
 #define CLMPF(x) ((x) * ((x) < 1.0) + (float)(x >= 1.0))
@@ -300,9 +297,11 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    for (int i = 0; i < triangle_count; i++) {
-        triangles[i].n = triangle_norm(&triangles[i]);
-    }
+    //triangles = tracy_mesh_load("suzanne.obj");
+    triangles = array_new(1, sizeof(Triangle));
+    Triangle tri = {{-1, 1.5, 2}, {1, 1.5, 2}, {0.5, 3, 1}, {0, 0, 0}};
+    tri.n = triangle_norm(&tri);
+    array_push(triangles, &tri);
 
     float* backbuffer = (float*)malloc(sizeof(float) * width * height * 3);
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 60, (float)width / (float)height, aperture, distToFocus);

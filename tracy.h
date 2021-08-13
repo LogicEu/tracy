@@ -79,10 +79,12 @@ bool sphere_hit(Ray* ray, Sphere* sphere, float tMin, float tMax, Hit* outHit);
 
 vec3 triangle_norm(Triangle* tri);
 void traingle_normalize(Triangle* tri);
-bool triangle_hit(Ray* ray, Triangle tri, float tMin, float tMax, Hit* outHit);
+bool triangle_hit(Ray* ray, Triangle* tri, float tMin, float tMax, Hit* outHit);
 
 Camera camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
 Ray camera_ray(Camera* cam, float s, float t);
+
+array_t* tracy_mesh_load(const char* path);
 
 #ifdef __cplusplus
 }
