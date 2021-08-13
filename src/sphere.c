@@ -1,4 +1,5 @@
 #include <tracy.h>
+#include <stdio.h>
 
 bool sphere_hit(Ray* ray, Sphere* sphere, float tMin, float tMax, Hit* outHit)
 {

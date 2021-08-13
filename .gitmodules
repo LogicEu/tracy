@@ -4,3 +4,9 @@
 [submodule "libfract"]
 	path = libfract
 	url = git@github.com:LogicEu/libfract.git
+[submodule "mass"]
+	path = mass
+	url = git@github.com:LogicEu/mass.git
+[submodule "utopia"]
+	path = utopia
+	url = git@github.com:LogicEu/utopia.git

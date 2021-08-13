@@ -1,17 +1,19 @@
 #include <tracy.h>
 #include <imgtool.h>
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
 
-#define DO_SAMPLES_PER_PIXEL 1000
+#define DO_SAMPLES_PER_PIXEL 100
 #define DO_ANIMATE 1
 #define DO_ANIMATE_SMOOTHING 0.1f
 #define GET_TIME() ((float)clock() / CLOCKS_PER_SEC)
 
 static Triangle triangles[] = {
-    {{-1, 0.3, 2}, {1, 0.3, 2}, {0.5, 2, 2}, {0, 0, 0}}
+    {{-1, 1, 3}, {1, 1, 3}, {0.5, 3, 2}, {0, 0, 0}}
 };
 
 static Sphere spheres[] = {
@@ -23,18 +25,14 @@ static Sphere spheres[] = {
     {{0, 0, 1}, 0.5f},
     {{-2, 0, 1}, 0.5f},
     {{-1.f, 1.5, 0.f}, 0.5f},
-    {{-1.5f, 3.5f, 4.f}, 0.5f}
-};
-
-static Material tri_materials[] = {
-    { Dielectric, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 }
+    {{0.0f, 3.5f, 4.f}, 0.5f}
 };
 
 static Material materials[] = {
     { Lambert, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 },
     { Lambert, {0.2f, 0.4f, 0.8f}, {0.1, 0, 0}, 0, 0 },
     { Lambert, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
-    { Metal, {1.0f, 1.0f, 1.0f}, {0, 0, 0}, 0.1, 0 },
+    { Metal, {1.0f, 1.0f, 1.0f}, {0, 0, 0}, 0.0, 0 },
     { Metal, {0.8f, 0.8f, 0.4f}, {0, 0, 0}, 0.8, 0 },
     { Metal, {0.2f, 0.2f, 0.8f}, {0, 0, 0}, 0.1f, 0 },
     { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.8f, 0.8 },
@@ -73,7 +71,7 @@ static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
             anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
-            *outID = 4;
+            *outID = 7;
         }
     }
     return anything;
@@ -182,7 +180,7 @@ static vec3 ray_trace(Ray* ray, int depth, int* inoutRayCount)
     } else {
         // Sky
         float t = 0.5f * (ray->dir.y + 1.0f);
-        return vec3_mult(vec3_add(vec3_mult(vec3_new(1.0f, 1.0f, 1.0f), 1.0f - t), vec3_mult(vec3_new(0.5f, 0.7f, 1.0f), t)), 0.3f);
+        return vec3_mult(vec3_add(vec3_mult(vec3_new(0.7f, 0.7f, 1.0f), 1.0f - t), vec3_mult(vec3_new(0.5f, 0.7f, 1.0f), t)), 0.3f);
     }
 }
 
@@ -196,9 +194,9 @@ typedef struct JobData {
 
 static JobData job;
 static Camera cam;
-static vec3 lookfrom = {0.0, .2, 4.0};
+static vec3 lookfrom = {0.0, 1.5, 6.0};
 static vec3 lookat = {0.0, 0.0, 0.0};
-static float distToFocus = 3.0f;
+static float distToFocus = 6.0f;
 static float aperture = 0.1f;
 
 #define CLMPF(x) ((x) * ((x) < 1.0) + (float)(x >= 1.0))

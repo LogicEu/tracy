@@ -9,11 +9,8 @@
 Tracy path tracer
 ****************/
 
-#include <libfract.h>
-#include <stdint.h>
+#include <mass.h>
 #include <stdbool.h>
-#include <stdio.h>
-#include <assert.h>
 
 typedef struct Ray {
     vec3 orig;

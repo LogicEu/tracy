@@ -1,4 +1,5 @@
 #include <tracy.h>
+#include <stdio.h>
 
 Ray ray_new(vec3 orig, vec3 dir) 
 {

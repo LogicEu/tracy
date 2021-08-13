@@ -15,6 +15,8 @@ inc=(
     -Iinclude/
     -Iimgtool/
     -Ilibfract/
+    -Iutopia/
+    -Imass/
     -I.
 )
 
@@ -22,6 +24,7 @@ lib=(
     -Llib/
     -limgtool
     -lfract
+    -lmass
     -lz
     -lpng
     -ljpeg
@@ -36,17 +39,19 @@ fail() {
     exit
 }
 
-build() {
-    pushd libfract/
-    ./build.sh -s
-    popd
-    pushd imgtool/
-    ./build.sh -slib
-    popd
+lib_build() {
+    pushd $1/
+    ./build.sh $3
+    popd 
+    mv $1/$2 lib/$2
+}
 
+build() {
     mkdir lib/
-    mv libfract/libfract.a lib/libfract.a
-    mv imgtool/libimgtool.a lib/libimgtool.a
+    lib_build utopia libutopia.a -slib
+    lib_build libfract libfract.a -s
+    lib_build imgtool libimgtool.a -slib
+    lib_build mass libmass.a -s    
 }
 
 comp() {
@@ -63,7 +68,6 @@ comp() {
 clean() {
     rm -r lib/
     rm $name
-    rm *.gif
 }
 
 if [[ $# < 1 ]]; then

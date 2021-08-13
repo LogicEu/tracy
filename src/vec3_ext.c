@@ -1,4 +1,5 @@
 #include <tracy.h>
+#include <stdio.h>
 
 vec3 vec3_reflect(vec3 v, vec3 n)
 {
