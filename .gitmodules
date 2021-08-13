@@ -1,12 +1,12 @@
 [submodule "imgtool"]
 	path = imgtool
 	url = git@github.com:LogicEu/imgtool.git
-[submodule "libfract"]
-	path = libfract
-	url = git@github.com:LogicEu/libfract.git
 [submodule "mass"]
 	path = mass
 	url = git@github.com:LogicEu/mass.git
 [submodule "utopia"]
 	path = utopia
 	url = git@github.com:LogicEu/utopia.git
+[submodule "fract"]
+	path = fract
+	url = git@github.com:LogicEu/fract.git

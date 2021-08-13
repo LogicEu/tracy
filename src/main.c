@@ -63,7 +63,7 @@ static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
             *outID = i;
         }
     }
-    for (int i = 0; i < triangles->used; i++) {
+    for (unsigned int i = 0; i < triangles->used; i++) {
         if (triangle_hit(r, array_index(triangles, i), tMin, closest, &tmpHit)) {
             anything = true;
             closest = tmpHit.t;
@@ -278,7 +278,7 @@ void scene_update(float time)
 
 int main(int argc, char** argv) 
 {   
-    int ray_count = 0, iters = 10, threads = 20;
+    int ray_count = 0, iters = 1, threads = 8;
     uint32_t width = 400, height = 400;
     char path[128], op[128];
 
@@ -297,7 +297,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    //triangles = tracy_mesh_load("suzanne.obj");
+    //triangles = tracy_mesh_load("assets/cube.obj");
     triangles = array_new(1, sizeof(Triangle));
     Triangle tri = {{-1, 1.5, 2}, {1, 1.5, 2}, {0.5, 3, 1}, {0, 0, 0}};
     tri.n = triangle_norm(&tri);

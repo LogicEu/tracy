@@ -14,7 +14,7 @@ flags=(
 inc=(
     -Iinclude/
     -Iimgtool/
-    -Ilibfract/
+    -Ifract/
     -Iutopia/
     -Imass/
     -I.
@@ -42,17 +42,17 @@ fail() {
 
 lib_build() {
     pushd $1/
-    ./build.sh $3
+    ./build.sh $2
     popd 
-    mv $1/$2 lib/$2
+    mv $1/lib$1.a lib/lib$1.a
 }
 
 build() {
     mkdir lib/
-    lib_build utopia libutopia.a -slib
-    lib_build libfract libfract.a -s
-    lib_build imgtool libimgtool.a -slib
-    lib_build mass libmass.a -s    
+    lib_build utopia -slib
+    lib_build fract -s
+    lib_build imgtool -slib
+    lib_build mass -s    
 }
 
 comp() {
