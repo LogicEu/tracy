@@ -5,36 +5,44 @@
 #include <time.h>
 #include <pthread.h>
 
-#define DO_SAMPLES_PER_PIXEL 100
+#define DO_SAMPLES_PER_PIXEL 1000
 #define DO_ANIMATE 1
 #define DO_ANIMATE_SMOOTHING 0.1f
-#define DO_LIGHT_SAMPLING 1
 #define GET_TIME() ((float)clock() / CLOCKS_PER_SEC)
+
+static Triangle triangles[] = {
+    {{-1, 0.3, 2}, {1, 0.3, 2}, {0.5, 2, 2}, {0, 0, 0}}
+};
 
 static Sphere spheres[] = {
     {{0, -100.5, -1}, 100},
-    {{2, 0, -1}, 0.5f},
+    {{2, 1, -1}, 1.5f},
     {{0, 0, -1}, 0.5f},
     {{-2, 0, -1}, 0.5f},
     {{2, 0, 1}, 0.5f},
     {{0, 0, 1}, 0.5f},
     {{-2, 0, 1}, 0.5f},
-    {{0.5f, 1, 0.5f}, 0.5f},
-    {{-1.5f, 2.5f, 0.f}, 0.3f}
+    {{-1.f, 1.5, 0.f}, 0.5f},
+    {{-1.5f, 3.5f, 4.f}, 0.5f}
+};
+
+static Material tri_materials[] = {
+    { Dielectric, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 }
 };
 
 static Material materials[] = {
     { Lambert, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 },
-    { Lambert, {0.8f, 0.4f, 0.4f}, {0, 0, 0}, 0, 0 },
+    { Lambert, {0.2f, 0.4f, 0.8f}, {0.1, 0, 0}, 0, 0 },
     { Lambert, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
-    { Metal, {1.0f, 1.0f, 1.0f}, {0, 0, 0}, 0, 0 },
-    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
-    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.0f, 0 },
-    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.0f, 0 },
+    { Metal, {1.0f, 1.0f, 1.0f}, {0, 0, 0}, 0.1, 0 },
+    { Metal, {0.8f, 0.8f, 0.4f}, {0, 0, 0}, 0.8, 0 },
+    { Metal, {0.2f, 0.2f, 0.8f}, {0, 0, 0}, 0.1f, 0 },
+    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.8f, 0.8 },
     { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
-    { Lambert, {0.8f, 0.6f, 0.2f}, {30, 25, 15}, 0, 0 }
+    { Lambert, {0.8f, 0.8f, 0.8f}, {30, 20, 15}, 0, 0 }
 };
 
+const int triangle_count = sizeof(triangles) / sizeof(triangles[0]);
 const int sphere_count = sizeof(spheres) / sizeof(spheres[0]);
 const float kMinT = 0.001f;
 const float kMaxT = 1.0e7f;
@@ -60,6 +68,14 @@ static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
             *outID = i;
         }
     }
+    for (int i = 0; i < triangle_count; i++) {
+        if (triangle_hit(r, triangles[i], tMin, closest, &tmpHit)) {
+            anything = true;
+            closest = tmpHit.t;
+            *outHit = tmpHit;
+            *outID = 4;
+        }
+    }
     return anything;
 }
 
@@ -73,7 +89,6 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
         *attenuation = mat->albedo;
         
         // sample lights
-#if DO_LIGHT_SAMPLING
         for (int i = 0; i < sphere_count; ++i) {
             Material* smat = &materials[i];
             if (smat->emissive.x <= 0.0 && smat->emissive.y <= 0.0 && smat->emissive.z <= 0.0) continue; // skip non-emissive
@@ -86,10 +101,10 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
             vec3 su = vec3_norm(vec3_cross(fabs(sw.x)>0.01f ? vec3_new(0.0, 1.0, 0.0) : vec3_new(1.0, 0.0, 0.0), sw));
             vec3 sv = vec3_cross(sw, su);
             // sample sphere by solid angle
-            float cosAMax = sqrtf(1.0f - s->radius*s->radius / vec3_sqmag(vec3_sub(rec->pos, s->center)));
+            float cosAMax = sqrtf(1.0f - s->radius * s->radius / vec3_sqmag(vec3_sub(rec->pos, s->center)));
             float eps1 = randf_norm(), eps2 = randf_norm();
             float cosA = 1.0f - eps1 + eps1 * cosAMax;
-            float sinA = sqrtf(1.0f - cosA*cosA);
+            float sinA = sqrtf(1.0f - cosA * cosA);
             float phi = 2 * M_PI * eps2;
             vec3 l = vec3_add(vec3_mult(su, cosf(phi) * sinA), vec3_add(vec3_mult(sv, sin(phi) * sinA), vec3_mult(sw, cosA)));
             l = vec3_norm(l);
@@ -107,7 +122,6 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
                 *outLightE = vec3_add(*outLightE, vec3_mult(vec3_prod(mat->albedo, smat->emissive), maxf(0.0f, vec3_dot(l, nl)) * omega / M_PI));
             }
         }
-#endif
         return true;
     }
     else if (mat->type == Metal) {
@@ -182,7 +196,7 @@ typedef struct JobData {
 
 static JobData job;
 static Camera cam;
-static vec3 lookfrom = {0.0, 2.0, 3.0};
+static vec3 lookfrom = {0.0, .2, 4.0};
 static vec3 lookat = {0.0, 0.0, 0.0};
 static float distToFocus = 3.0f;
 static float aperture = 0.1f;
@@ -229,7 +243,7 @@ static void* frame_row_render(void* args)
 
 static void frame_render()
 {   
-    for (uint32_t i = 0; i < job.screenHeight; i++) {
+    for (int i = 0; i < job.screenHeight; i++) {
         uint32_t start = i, end = i + 1;
         uint32_t args[2];
         args[0] = start;
@@ -264,8 +278,7 @@ static void frame_render_threaded(int thread_count)
 
 void scene_update(float time)
 {
-    spheres[1].center.x = cosf(time) + 1.0f;
-    spheres[2].center.z = sinf(time) * 0.3f;
+    cam.origin.z += time;
 }
 
 int main(int argc, char** argv) 
@@ -289,6 +302,10 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
+    for (int i = 0; i < triangle_count; i++) {
+        triangles[i].n = triangle_norm(&triangles[i]);
+    }
+
     float* backbuffer = (float*)malloc(sizeof(float) * width * height * 3);
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 60, (float)width / (float)height, aperture, distToFocus);
     job.frameCount = iters;
@@ -309,7 +326,7 @@ int main(int argc, char** argv)
         else frame_render_threaded(threads);
         ray_count += ray;
         bmp_t bmp = bmp_new(width, height, 3);
-        for (int j = 0; j < width * height * 3; j++) {
+        for (uint32_t j = 0; j < width * height * 3; j++) {
             bmp.pixels[j] = (uint8_t)(backbuffer[j] * 255.0f);
         }
         bmps[i] = bmp_flip_vertical(&bmp);

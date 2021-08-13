@@ -31,6 +31,11 @@ typedef struct Sphere {
     float radius;
 } Sphere;
 
+typedef struct Triangle {
+    vec3 a, b, c;
+    vec3 n;
+} Triangle;
+
 typedef enum {
     Lambert, 
     Metal,
@@ -74,6 +79,10 @@ Ray ray_new(vec3 orig, vec3 dir);
 vec3 ray_at(Ray* ray, float t);
 
 bool sphere_hit(Ray* ray, Sphere* sphere, float tMin, float tMax, Hit* outHit);
+
+vec3 triangle_norm(Triangle* tri);
+void traingle_normalize(Triangle* tri);
+bool triangle_hit(Ray* ray, Triangle tri, float tMin, float tMax, Hit* outHit);
 
 Camera camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
 Ray camera_ray(Camera* cam, float s, float t);
