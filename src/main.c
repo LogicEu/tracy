@@ -7,7 +7,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#define DO_SAMPLES_PER_PIXEL 100
+#define DO_SAMPLES_PER_PIXEL 1000
 #define DO_ANIMATE 1
 #define DO_ANIMATE_SMOOTHING 0.1f
 #define GET_TIME() ((float)clock() / CLOCKS_PER_SEC)
@@ -15,15 +15,15 @@
 static array_t* triangles;
 
 static Sphere spheres[] = {
-    {{0, -105.5, -1}, 100},
-    {{2, 1, -1}, 1.5f},
+    {{0, -100.5, -1}, 100},
+    {{2, 1, -1}, 0.5f},
     {{0, 0, -1}, 0.5f},
     {{-2, 0, -1}, 0.5f},
     {{2, 0, 1}, 0.5f},
     {{0, -1, 1}, 0.5f},
     {{-2, 0, 1}, 0.5f},
-    {{-1.f, 1.5, 0.f}, 0.5f},
-    {{0.0f, 3.5f, 4.f}, 0.5f}
+    {{-1.f, 1.25, 3.f}, 0.5f},
+    {{-2.0f, 2.5f, 4.f}, 0.5f}
 };
 
 static Material materials[] = {
@@ -35,7 +35,7 @@ static Material materials[] = {
     { Metal, {0.2f, 0.2f, 0.8f}, {0, 0, 0}, 0.1f, 0 },
     { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.8f, 0.8 },
     { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
-    { Lambert, {0.8f, 0.8f, 0.8f}, {30, 20, 15}, 0, 0 }
+    { Lambert, {0.8f, 0.5f, 0.3f}, {20, 15, 5}, 0, 0 }
 };
 
 const int sphere_count = sizeof(spheres) / sizeof(spheres[0]);
@@ -68,7 +68,7 @@ static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
             anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
-            *outID = 0;
+            *outID = 1;
         }
     }
     return anything;
@@ -191,9 +191,9 @@ typedef struct JobData {
 
 static JobData job;
 static Camera cam;
-static vec3 lookfrom = {0.0, 1.5, 3.0};
+static vec3 lookfrom = {0.0, 3.5, 6.0};
 static vec3 lookat = {0.0, 0.0, 0.0};
-static float distToFocus = 2.5f;
+static float distToFocus = 6.0f;
 static float aperture = 0.1f;
 
 #define CLMPF(x) ((x) * ((x) < 1.0) + (float)(x >= 1.0))
@@ -297,7 +297,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    //triangles = tracy_mesh_load("assets/cube.obj");
+    //triangles = tracy_mesh_load("assets/suzanne.obj");
     triangles = array_new(1, sizeof(Triangle));
     Triangle tri = {{-1, 1.5, 2}, {1, 1.5, 2}, {0.5, 3, 1}, {0, 0, 0}};
     tri.n = triangle_norm(&tri);
