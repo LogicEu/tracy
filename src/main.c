@@ -7,10 +7,10 @@
 #include <time.h>
 #include <pthread.h>
 
-#define DO_SAMPLES_PER_PIXEL 1000
-#define DO_ANIMATE 1
-#define DO_ANIMATE_SMOOTHING 0.1f
-#define GET_TIME() ((float)clock() / CLOCKS_PER_SEC)
+const char* string_separator = "----------------------------------------------------------\n";
+
+static int samples_per_pixel = 100;
+static float animate_smoothing = 0.01f;
 
 static array_t* triangles;
 
@@ -80,7 +80,7 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
     if (mat->type == Lambert) {
         // random point inside unit sphere that is tangent to the hit point
         vec3 target = vec3_add(rec->pos, vec3_add(rec->normal, random_in_sphere()));
-        *scattered = ray_new(rec->pos, vec3_norm(vec3_sub(target, rec->pos)));
+        *scattered = ray_new(rec->pos, vec3_normal(vec3_sub(target, rec->pos)));
         *attenuation = mat->albedo;
         
         // sample lights
@@ -92,8 +92,8 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
             
             // create a random direction towards sphere
             // coord system for sampling: sw, su, sv
-            vec3 sw = vec3_norm(vec3_sub(s->center, rec->pos));
-            vec3 su = vec3_norm(vec3_cross(fabs(sw.x)>0.01f ? vec3_new(0.0, 1.0, 0.0) : vec3_new(1.0, 0.0, 0.0), sw));
+            vec3 sw = vec3_normal(vec3_sub(s->center, rec->pos));
+            vec3 su = vec3_normal(vec3_cross(fabs(sw.x) > 0.01f ? vec3_new(0.0, 1.0, 0.0) : vec3_new(1.0, 0.0, 0.0), sw));
             vec3 sv = vec3_cross(sw, su);
             // sample sphere by solid angle
             float cosAMax = sqrtf(1.0f - s->radius * s->radius / vec3_sqmag(vec3_sub(rec->pos, s->center)));
@@ -102,7 +102,7 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
             float sinA = sqrtf(1.0f - cosA * cosA);
             float phi = 2 * M_PI * eps2;
             vec3 l = vec3_add(vec3_mult(su, cosf(phi) * sinA), vec3_add(vec3_mult(sv, sin(phi) * sinA), vec3_mult(sw, cosA)));
-            l = vec3_norm(l);
+            l = vec3_normal(l);
             
             // shoot shadow ray
             Hit lightHit;
@@ -123,7 +123,7 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
         AssertUnit(ray->dir); AssertUnit(rec->normal);
         vec3 refl = vec3_reflect(ray->dir, rec->normal);
         // reflected ray, and random inside of sphere based on roughness
-        *scattered = ray_new(rec->pos, vec3_norm(vec3_add(refl, vec3_mult(random_in_sphere(), mat->roughness))));
+        *scattered = ray_new(rec->pos, vec3_normal(vec3_add(refl, vec3_mult(random_in_sphere(), mat->roughness))));
         *attenuation = mat->albedo;
         return vec3_dot(scattered->dir, rec->normal) > 0.0f;
     }
@@ -151,8 +151,8 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
             reflProb = schlick(cosine, mat->ri);
         } else reflProb = 1.0f;
         
-        if (randf_norm() < reflProb) *scattered = ray_new(rec->pos, vec3_norm(refl));
-        else *scattered = ray_new(rec->pos, vec3_norm(refr));
+        if (randf_norm() < reflProb) *scattered = ray_new(rec->pos, vec3_normal(refl));
+        else *scattered = ray_new(rec->pos, vec3_normal(refr));
     }
     else {
         *attenuation = vec3_new(1.0f, 0.0f, 1.0f);
@@ -200,28 +200,35 @@ static float aperture = 0.1f;
 
 static void* frame_row_render(void* args)
 {
+    volatile static bool first = true;
+    volatile static int frame = 1;
+    bool check = first;
+    first = false;
+
     uint32_t* uarg = args;
     uint32_t start = *(uarg++);
     uint32_t end = *uarg;
+
+    static struct timespec time_start, time_end;
+    if (check) clock_gettime(CLOCK_MONOTONIC, &time_start);
 
     float* backbuffer = job.backbuffer + start * job.screenWidth * 3;
     float invWidth = 1.0f / job.screenWidth;
     float invHeight = 1.0f / job.screenHeight;
     float lerpFac = (float)job.frameCount / (float)(job.frameCount + 1);
-#if DO_ANIMATE
-    lerpFac *= DO_ANIMATE_SMOOTHING;
-#endif
+    lerpFac *= animate_smoothing;
+
     int rayCount = 0;
     for (uint32_t y = start; y < end; ++y) {
         for (int x = 0; x < job.screenWidth; ++x) {
             vec3 col = vec3_uni(0.0f);
-            for (int s = 0; s < DO_SAMPLES_PER_PIXEL; s++) {
+            for (int s = 0; s < samples_per_pixel; s++) {
                 float u = ((float)x + randf_norm()) * invWidth;
                 float v = ((float)y + randf_norm()) * invHeight;
                 Ray r = camera_ray(job.cam, u, v);
                 col = vec3_add(col, ray_trace(&r, 0, &rayCount));
             }
-            col = vec3_mult(col, 1.0f / (float)DO_SAMPLES_PER_PIXEL);
+            col = vec3_mult(col, 1.0f / (float)samples_per_pixel);
             col = vec3_new(sqrtf(col.x), sqrtf(col.y), sqrtf(col.z));
             
             vec3 prev = vec3_new(backbuffer[0], backbuffer[1], backbuffer[2]);
@@ -230,7 +237,18 @@ static void* frame_row_render(void* args)
             backbuffer[1] = CLMPF(col.y);
             backbuffer[2] = CLMPF(col.z);
             backbuffer += 3;
+            if (check) {
+                int samp = (y - start) * job.screenWidth + x + 1, off = (end - start) * job.screenWidth;
+                printf("\rframe\t%d\t%.01f%%\t(%d\t/ %d)", frame, ((float)samp / (float)off) * 100.0f, samp, off);
+            }
         }
+    }
+    if (check) {
+        clock_gettime(CLOCK_MONOTONIC, &time_end);
+        double time_elapsed = (time_end.tv_sec - time_start.tv_sec);
+        printf("\t%fs\n", time_elapsed + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0);
+        frame++;
+        first = true;
     }
     job.rayCount += rayCount;
     return NULL;
@@ -274,6 +292,8 @@ static void frame_render_threaded(int thread_count)
 void scene_update(float time)
 {
     cam.origin.z += time;
+    cam.origin.x += time;
+    cam.origin.y -= time;
 }
 
 int main(int argc, char** argv) 
@@ -285,17 +305,24 @@ int main(int argc, char** argv)
     if (argc > 1) width = (uint32_t)atoi(argv[1]);
     if (argc > 2) height = (uint32_t)atoi(argv[2]);
     if (argc > 3) iters = atoi(argv[3]);
+    if (argc > 4) samples_per_pixel = atoi(argv[4]);
+    if (argc > 5) threads = atoi(argv[5]);
 
     if (!iters) {
-        printf("Frame count cannot be 0.\n");
+        printf("frame count cannot be 0.\n");
         return EXIT_FAILURE;
     } else if (!threads) {
-        printf("Thread count cannot be 0.\n");
+        printf("thread count cannot be 0.\n");
         return EXIT_FAILURE;
     } else if (!width || !height) {
-        printf("Width and height cannot be 0.\n");
+        printf("width and height cannot be 0.\n");
+        return EXIT_FAILURE;
+    } else if (!samples_per_pixel) {
+        printf("samples per pixel cannot be 0.\n");
         return EXIT_FAILURE;
     }
+
+    bmp_t bmps[iters];
 
     //triangles = tracy_mesh_load("assets/suzanne.obj");
     triangles = array_new(1, sizeof(Triangle));
@@ -312,12 +339,16 @@ int main(int argc, char** argv)
     job.cam = &cam;
     job.rayCount = 0;
 
-    printf("Rendering path traced scene with %d threads...\nwidth: %d\nheight: %d\n", threads, width, height);
-    float time = GET_TIME();
-    bmp_t bmps[iters];
+    printf("\ntracy is rendering the scene...\n");
+    printf("threads:\t%d\nframes:\t\t%d\nwidth:\t\t%d\nheight:\t\t%d\nspp:\t\t%d\n", threads, iters, width, height, samples_per_pixel);
+    printf("%s", string_separator);
+    printf("frame:\tNº\t%%\t(px\t/ of\t)\ttime\n");
+    printf("%s", string_separator);
+
+    struct timespec time_start, time_end;
+    clock_gettime(CLOCK_MONOTONIC, &time_start);
     for (int i = 0; i < iters; i++) {
         int ray = 0;
-        printf("Rendering frame %d of %d\n", i + 1, iters);
         scene_update((float)i * 0.1);
         if (threads == 1) frame_render();
         else frame_render_threaded(threads);
@@ -329,7 +360,10 @@ int main(int argc, char** argv)
         bmps[i] = bmp_flip_vertical(&bmp);
         bmp_free(&bmp);
     }
-    printf("Rendered in %f\n", (GET_TIME() - time) / (float)threads);
+    clock_gettime(CLOCK_MONOTONIC, &time_end);
+    double time_elapsed = (time_end.tv_sec - time_start.tv_sec);
+    printf("%s", string_separator);
+    printf("finished int %fs\n", time_elapsed + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0);
 
     if (iters == 1) {
         strcpy(path, "out.png");

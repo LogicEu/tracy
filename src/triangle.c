@@ -6,7 +6,7 @@ vec3 triangle_norm(Triangle* tri)
 {
     vec3 e1 = vec3_sub(tri->b, tri->a);
     vec3 e2 = vec3_sub(tri->c, tri->a);
-    return vec3_norm(vec3_cross(e1, e2)); 
+    return vec3_normal(vec3_cross(e1, e2)); 
 }
 
 void traingle_normalize(Triangle* tri)
