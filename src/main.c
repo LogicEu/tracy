@@ -51,13 +51,13 @@ static float schlick(float cosine, float ri)
     return r0 + (1.0f - r0) * powf(1.0 - cosine, 5.0);
 }
 
-static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
+static bool scene_hit(Ray* restrict ray, float tMin, float tMax, Hit* outHit, int* outID)
 {
     Hit tmpHit;
     bool anything = false;
     float closest = tMax;
     for (int i = 0; i < sphere_count; ++i) {
-        if (sphere_hit(r, &spheres[i], tMin, closest, &tmpHit)) {
+        if (sphere_hit(ray, &spheres[i], tMin, closest, &tmpHit)) {
             anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
@@ -65,7 +65,7 @@ static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
         }
     }
     for (unsigned int i = 0; i < triangles->used; i++) {
-        if (triangle_hit(r, array_index(triangles, i), tMin, closest, &tmpHit)) {
+        if (triangle_hit(ray, array_index(triangles, i), tMin, closest, &tmpHit)) {
             anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
@@ -75,7 +75,7 @@ static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
     return anything;
 }
 
-static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ray* scattered, vec3* outLightE, int* inoutRayCount)
+static bool ray_scatter(Material* restrict mat, Ray* restrict ray, Hit* rec, vec3* attenuation, Ray* scattered, vec3* outLightE, int* inoutRayCount)
 {
     *outLightE = vec3_uni(0.0f);
     if (mat->type == Lambert) {
@@ -114,7 +114,6 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
             if (scene_hit(&r, kMinT, kMaxT, &lightHit, &hitID) && hitID == i) {
                 float omega = 2.0 * M_PI * (1.0 - cosAMax);
                 
-                AssertUnit(ray->dir);
                 vec3 nl = vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : vec3_neg(rec->normal);
                 *outLightE = vec3_add(*outLightE, vec3_mult(vec3_prod(mat->albedo, smat->emissive), maxf(0.0f, vec3_dot(l, nl)) * omega / M_PI));
             }
@@ -122,7 +121,6 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
         return true;
     }
     else if (mat->type == Metal) {
-        AssertUnit(ray->dir); AssertUnit(rec->normal);
         vec3 refl = vec3_reflect(ray->dir, rec->normal);
         // reflected ray, and random inside of sphere based on roughness
         *scattered = ray_new(rec->pos, vec3_normal(vec3_add(refl, vec3_mult(random_in_sphere(), mat->roughness))));
@@ -130,8 +128,6 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
         return vec3_dot(scattered->dir, rec->normal) > 0.0f;
     }
     else if (mat->type == Dielectric) {
-        AssertUnit(ray->dir); 
-        AssertUnit(rec->normal);
         vec3 outwardN;
         vec3 refl = vec3_reflect(ray->dir, rec->normal);
         float nint;
@@ -163,7 +159,7 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
     return true;
 }
 
-static vec3 ray_trace(Ray* ray, int depth, int* inoutRayCount)
+static vec3 ray_trace(Ray* restrict ray, int depth, int* inoutRayCount)
 {
     Hit rec;
     int id = 0;
@@ -293,8 +289,9 @@ static void frame_render_threaded(int thread_count)
 void scene_update(float time)
 {
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 90, (float)job.screenWidth / (float)job.screenHeight, aperture, distToFocus);
-    lookfrom.z += time;
-    lookfrom.x -= time;
+    distToFocus -= 0.5 * time;
+    spheres[7].center.x += time;
+    spheres[7].center.z -= time;
 }
 
 int main(int argc, char** argv) 

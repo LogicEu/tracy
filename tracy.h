@@ -56,14 +56,6 @@ typedef struct Camera {
     float lensRadius;
 } Camera;
 
-#define AssertUnit(v)                               \
-do {                                                \
-    if (!(fabsf(vec3_sqmag(v) - 1.0f) < 0.01f)) {   \
-        printf("%d, %s - ", __LINE__, __func__);    \
-        vec3_print(v);                              \
-    }                                               \
-} while (0)
-
 /* ... */
 
 vec3 vec3_reflect(vec3 v, vec3 n);

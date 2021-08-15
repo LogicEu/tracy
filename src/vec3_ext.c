@@ -8,7 +8,6 @@ vec3 vec3_reflect(vec3 v, vec3 n)
 
 bool vec3_refract(vec3 v, vec3 n, float nint, vec3* outRefracted)
 {
-    AssertUnit(v);
     float dt = vec3_dot(v, n);
     float discr = 1.0f - nint * nint * (1.0f - dt * dt);
     if (discr > 0) {

@@ -1,9 +1,8 @@
 #include <tracy.h>
 #include <stdio.h>
 
-bool sphere_hit(Ray* ray, Sphere* sphere, float tMin, float tMax, Hit* outHit)
+bool sphere_hit(Ray* restrict ray, Sphere* restrict sphere, float tMin, float tMax, Hit* outHit)
 {
-    AssertUnit(ray->dir);
     vec3 oc = vec3_sub(ray->orig, sphere->center);
     float b = vec3_dot(oc, ray->dir);
     float c = vec3_dot(oc, oc) - sphere->radius * sphere->radius;
