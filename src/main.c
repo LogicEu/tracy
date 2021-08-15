@@ -7,10 +7,11 @@
 #include <time.h>
 #include <pthread.h>
 
-const char* string_separator = "----------------------------------------------------------\n";
+const char* string_separator = "--------------------------------------------------------------------------------------------\n";
 
-static int samples_per_pixel = 100;
+static int samples_per_pixel = 400;
 static float animate_smoothing = 0.01f;
+static bool light_sampling = true;
 
 static array_t* triangles;
 
@@ -18,22 +19,22 @@ static Sphere spheres[] = {
     {{0, -100.5, -1}, 100},
     {{2, 1, -1}, 0.5f},
     {{0, 0, -1}, 0.5f},
-    {{-2, 0, -1}, 0.5f},
+    {{-2, 1, -4}, 2.5f},
     {{2, 0, 1}, 0.5f},
-    {{0, -1, 1}, 0.5f},
-    {{-2, 0, 1}, 0.5f},
-    {{-1.f, 1.25, 3.f}, 0.5f},
+    {{0, 3, 1}, 0.5f},
+    {{-2, 0, 2}, 0.5f},
+    {{-1.5f, 1.25, 2.f}, 0.5f},
     {{-2.0f, 2.5f, 4.f}, 0.5f}
 };
 
 static Material materials[] = {
     { Lambert, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 },
-    { Lambert, {0.2f, 0.4f, 0.8f}, {0.1, 0, 0}, 0, 0 },
+    { Lambert, {0.8f, 0.4f, 0.2f}, {0, 0, 0}, 0, 0 },
     { Lambert, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
     { Metal, {1.0f, 1.0f, 1.0f}, {0, 0, 0}, 0.0, 0 },
     { Metal, {0.8f, 0.8f, 0.4f}, {0, 0, 0}, 0.8, 0 },
     { Metal, {0.2f, 0.2f, 0.8f}, {0, 0, 0}, 0.1f, 0 },
-    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.8f, 0.8 },
+    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.0f, 0.8 },
     { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
     { Lambert, {0.8f, 0.5f, 0.3f}, {20, 15, 5}, 0, 0 }
 };
@@ -68,7 +69,7 @@ static bool scene_hit(Ray* r, float tMin, float tMax, Hit* outHit, int* outID)
             anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
-            *outID = 1;
+            *outID = 3;
         }
     }
     return anything;
@@ -84,6 +85,7 @@ static bool ray_scatter(Material* mat, Ray* ray, Hit* rec, vec3* attenuation, Ra
         *attenuation = mat->albedo;
         
         // sample lights
+        if (!light_sampling) return true;
         for (int i = 0; i < sphere_count; ++i) {
             Material* smat = &materials[i];
             if (smat->emissive.x <= 0.0 && smat->emissive.y <= 0.0 && smat->emissive.z <= 0.0) continue; // skip non-emissive
@@ -176,8 +178,9 @@ static vec3 ray_trace(Ray* ray, int depth, int* inoutRayCount)
         } else return mat->emissive;
     } else {
         // Sky
-        float t = 0.5f * (ray->dir.y + 1.0f);
-        return vec3_mult(vec3_add(vec3_mult(vec3_new(0.7f, 0.7f, 1.0f), 1.0f - t), vec3_mult(vec3_new(0.5f, 0.7f, 1.0f), t)), 0.3f);
+        float t = 0.3f * (ray->dir.y + 1.0f);
+        return vec3_mult(vec3_add(vec3_mult(vec3_new(0.7f, 0.7f, 1.0f), 1.0f - t), vec3_mult(vec3_new(0.5f, 0.7f, 1.0f), t)), 0.03f);
+        //return vec3_uni(0.0);
     }
 }
 
@@ -191,9 +194,9 @@ typedef struct JobData {
 
 static JobData job;
 static Camera cam;
-static vec3 lookfrom = {0.0, 3.5, 6.0};
+static vec3 lookfrom = {0.0, 1.0, 3.0};
 static vec3 lookat = {0.0, 0.0, 0.0};
-static float distToFocus = 6.0f;
+static float distToFocus = 5.0f;
 static float aperture = 0.1f;
 
 #define CLMPF(x) ((x) * ((x) < 1.0) + (float)(x >= 1.0))
@@ -238,17 +241,20 @@ static void* frame_row_render(void* args)
             backbuffer[2] = CLMPF(col.z);
             backbuffer += 3;
             if (check) {
+                clock_gettime(CLOCK_MONOTONIC, &time_end);
+                double time_elapsed = (time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0;
                 int samp = (y - start) * job.screenWidth + x + 1, off = (end - start) * job.screenWidth;
-                printf("\rframe\t%d\t%.01f%%\t(%d\t/ %d)", frame, ((float)samp / (float)off) * 100.0f, samp, off);
+                float perc = ((float)samp / (float)off) * 100.0f;
+                double time_estimate = time_elapsed * 100.0f / perc;
+                double time_remaining = time_estimate - time_elapsed;
+                printf("\rframe\t%d\t%.01f%%\t( %d\t/ %d\t)\t%.03fs\t\t%.03fs\t\t%.03fs", frame, perc, samp, off, time_elapsed, time_estimate, time_remaining);
             }
         }
     }
     if (check) {
-        clock_gettime(CLOCK_MONOTONIC, &time_end);
-        double time_elapsed = (time_end.tv_sec - time_start.tv_sec);
-        printf("\t%fs\n", time_elapsed + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0);
         frame++;
         first = true;
+        printf("\n");
     }
     job.rayCount += rayCount;
     return NULL;
@@ -256,13 +262,8 @@ static void* frame_row_render(void* args)
 
 static void frame_render()
 {   
-    for (int i = 0; i < job.screenHeight; i++) {
-        uint32_t start = i, end = i + 1;
-        uint32_t args[2];
-        args[0] = start;
-        args[1] = end;
-        frame_row_render(&args[0]);
-    }
+    uint32_t args[] = {0, job.screenHeight};
+    frame_row_render(&args[0]);
 }
 
 static void frame_render_threaded(int thread_count)
@@ -291,9 +292,9 @@ static void frame_render_threaded(int thread_count)
 
 void scene_update(float time)
 {
-    cam.origin.z += time;
-    cam.origin.x += time;
-    cam.origin.y -= time;
+    cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 90, (float)job.screenWidth / (float)job.screenHeight, aperture, distToFocus);
+    lookfrom.z += time;
+    lookfrom.x -= time;
 }
 
 int main(int argc, char** argv) 
@@ -323,15 +324,15 @@ int main(int argc, char** argv)
     }
 
     bmp_t bmps[iters];
-
     //triangles = tracy_mesh_load("assets/suzanne.obj");
+    
+    printf("tracy is ready!\n");
     triangles = array_new(1, sizeof(Triangle));
-    Triangle tri = {{-1, 1.5, 2}, {1, 1.5, 2}, {0.5, 3, 1}, {0, 0, 0}};
+    Triangle tri = {{-2, -0.5, 1}, {0, -0.5, 2}, {-1, 1, 1}, {0, 0, 0}};
     tri.n = triangle_norm(&tri);
     array_push(triangles, &tri);
 
     float* backbuffer = (float*)malloc(sizeof(float) * width * height * 3);
-    cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 60, (float)width / (float)height, aperture, distToFocus);
     job.frameCount = iters;
     job.screenWidth = width;
     job.screenHeight = height;
@@ -339,17 +340,17 @@ int main(int argc, char** argv)
     job.cam = &cam;
     job.rayCount = 0;
 
-    printf("\ntracy is rendering the scene...\n");
-    printf("threads:\t%d\nframes:\t\t%d\nwidth:\t\t%d\nheight:\t\t%d\nspp:\t\t%d\n", threads, iters, width, height, samples_per_pixel);
+    printf("threads:\t%d\nframes:\t\t%d\nwidth:\t\t%d\nheight:\t\t%d\nsamples:\t%d\n", threads, iters, width, height, samples_per_pixel);
+    printf("rendering the scene...\n");
     printf("%s", string_separator);
-    printf("frame:\tNº\t%%\t(px\t/ of\t)\ttime\n");
+    printf("frames\tNº\t%%\t(px\t/ of\t)\telapsed\t\testimate\tremaining\n");
     printf("%s", string_separator);
 
     struct timespec time_start, time_end;
     clock_gettime(CLOCK_MONOTONIC, &time_start);
     for (int i = 0; i < iters; i++) {
         int ray = 0;
-        scene_update((float)i * 0.1);
+        scene_update((float)i * 0.02);
         if (threads == 1) frame_render();
         else frame_render_threaded(threads);
         ray_count += ray;
@@ -361,9 +362,11 @@ int main(int argc, char** argv)
         bmp_free(&bmp);
     }
     clock_gettime(CLOCK_MONOTONIC, &time_end);
-    double time_elapsed = (time_end.tv_sec - time_start.tv_sec);
+    double time_elapsed = (time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0;
     printf("%s", string_separator);
-    printf("finished int %fs\n", time_elapsed + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0);
+    int minutes = (int)(time_elapsed / 60.0);
+    printf("total\t\t\t\t\t\t%.03fs\t%dm\t%f\n", time_elapsed, minutes, time_elapsed - 60.0 * minutes);
+    printf("%s", string_separator);
 
     if (iters == 1) {
         strcpy(path, "out.png");
