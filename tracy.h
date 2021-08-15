@@ -10,28 +10,7 @@ Tracy path tracer
 ****************/
 
 #include <mass.h>
-#include <stdbool.h>
-
-typedef struct Ray {
-    vec3 orig;
-    vec3 dir;
-} Ray;
-
-typedef struct Hit {
-    vec3 pos;
-    vec3 normal;
-    float t;
-} Hit;
-
-typedef struct Sphere {   
-    vec3 center;
-    float radius;
-} Sphere;
-
-typedef struct Triangle {
-    vec3 a, b, c;
-    vec3 n;
-} Triangle;
+#include <photon.h>
 
 typedef enum {
     Lambert, 
@@ -47,35 +26,19 @@ typedef struct Material {
     float ri;
 } Material;
 
-typedef struct Camera {
+typedef struct Cam3D {
     vec3 origin;
     vec3 lowerLeftCorner;
     vec3 horizontal;
     vec3 vertical;
     vec3 u, v, w;
     float lensRadius;
-} Camera;
+} Cam3D;
 
 /* ... */
 
-vec3 vec3_reflect(vec3 v, vec3 n);
-bool vec3_refract(vec3 v, vec3 n, float nint, vec3* outRefracted);
-
-vec3 random_in_disk();
-vec3 random_in_sphere();
-
-Ray ray_new(vec3 orig, vec3 dir);
-vec3 ray_at(Ray* ray, float t);
-
-bool sphere_hit(Ray* ray, Sphere* sphere, float tMin, float tMax, Hit* outHit);
-
-vec3 triangle_norm(Triangle* tri);
-void traingle_normalize(Triangle* tri);
-bool triangle_hit(Ray* ray, Triangle* tri, float tMin, float tMax, Hit* outHit);
-
-Camera camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
-Ray camera_ray(Camera* cam, float s, float t);
-
+Cam3D camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
+Ray3D camera_ray(const Cam3D* cam, float s, float t);
 array_t* tracy_mesh_load(const char* path);
 
 #ifdef __cplusplus

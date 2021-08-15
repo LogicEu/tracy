@@ -1,8 +1,8 @@
 #include <tracy.h>
 
-Camera camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist)
+Cam3D camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist)
 {
-    Camera cam;
+    Cam3D cam;
     cam.lensRadius = aperture * 0.5;
     float theta = vfov * M_PI / 180.0;
     float halfHeight = tanf(theta * 0.5);
@@ -17,10 +17,10 @@ Camera camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect
     return cam;
 }
 
-Ray camera_ray(Camera* restrict cam, float s, float t)
+Ray3D camera_ray(const Cam3D* restrict cam, float s, float t)
 {
     vec3 rd = vec3_mult(random_in_disk(), cam->lensRadius);
     vec3 offset = vec3_add(vec3_mult(cam->u, rd.x), vec3_mult(cam->v, rd.y));
     vec3 p = vec3_add(cam->origin, offset);
-    return ray_new(p, vec3_normal(vec3_sub(vec3_add(cam->lowerLeftCorner, vec3_add(vec3_mult(cam->horizontal, s), vec3_mult(cam->vertical, t))), p)));
+    return ray3D_new(p, vec3_normal(vec3_sub(vec3_add(cam->lowerLeftCorner, vec3_add(vec3_mult(cam->horizontal, s), vec3_mult(cam->vertical, t))), p)));
 }

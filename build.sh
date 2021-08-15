@@ -17,6 +17,7 @@ inc=(
     -Ifract/
     -Iutopia/
     -Imass/
+    -Iphoton/
     -I.
 )
 
@@ -26,6 +27,7 @@ lib=(
     -lfract
     -lutopia
     -lmass
+    -lphoton
     -lz
     -lpng
     -ljpeg
@@ -52,7 +54,8 @@ build() {
     lib_build utopia -slib
     lib_build fract -s
     lib_build imgtool -slib
-    lib_build mass -s    
+    lib_build mass -s
+    lib_build photon -s
 }
 
 comp() {

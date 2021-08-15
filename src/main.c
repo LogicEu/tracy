@@ -51,13 +51,13 @@ static float schlick(float cosine, float ri)
     return r0 + (1.0f - r0) * powf(1.0 - cosine, 5.0);
 }
 
-static bool scene_hit(Ray* restrict ray, float tMin, float tMax, Hit* outHit, int* outID)
+static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, float tMin, float tMax)
 {
-    Hit tmpHit;
+    Hit3D tmpHit;
     bool anything = false;
     float closest = tMax;
     for (int i = 0; i < sphere_count; ++i) {
-        if (sphere_hit(ray, &spheres[i], tMin, closest, &tmpHit)) {
+        if (sphere_hit(&spheres[i], ray, &tmpHit, tMin, closest)) {
             anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
@@ -65,7 +65,7 @@ static bool scene_hit(Ray* restrict ray, float tMin, float tMax, Hit* outHit, in
         }
     }
     for (unsigned int i = 0; i < triangles->used; i++) {
-        if (triangle_hit(ray, array_index(triangles, i), tMin, closest, &tmpHit)) {
+        if (tri3D_hit(array_index(triangles, i), ray, &tmpHit, tMin, closest)) {
             anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
@@ -75,13 +75,13 @@ static bool scene_hit(Ray* restrict ray, float tMin, float tMax, Hit* outHit, in
     return anything;
 }
 
-static bool ray_scatter(Material* restrict mat, Ray* restrict ray, Hit* rec, vec3* attenuation, Ray* scattered, vec3* outLightE, int* inoutRayCount)
+static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray, Hit3D* rec, vec3* attenuation, Ray3D* scattered, vec3* outLightE, int* inoutRayCount)
 {
     *outLightE = vec3_uni(0.0f);
     if (mat->type == Lambert) {
         // random point inside unit sphere that is tangent to the hit point
         vec3 target = vec3_add(rec->pos, vec3_add(rec->normal, random_in_sphere()));
-        *scattered = ray_new(rec->pos, vec3_normal(vec3_sub(target, rec->pos)));
+        *scattered = ray3D_new(rec->pos, vec3_normal(vec3_sub(target, rec->pos)));
         *attenuation = mat->albedo;
         
         // sample lights
@@ -94,11 +94,11 @@ static bool ray_scatter(Material* restrict mat, Ray* restrict ray, Hit* rec, vec
             
             // create a random direction towards sphere
             // coord system for sampling: sw, su, sv
-            vec3 sw = vec3_normal(vec3_sub(s->center, rec->pos));
+            vec3 sw = vec3_normal(vec3_sub(s->pos, rec->pos));
             vec3 su = vec3_normal(vec3_cross(fabs(sw.x) > 0.01f ? vec3_new(0.0, 1.0, 0.0) : vec3_new(1.0, 0.0, 0.0), sw));
             vec3 sv = vec3_cross(sw, su);
             // sample sphere by solid angle
-            float cosAMax = sqrtf(1.0f - s->radius * s->radius / vec3_sqmag(vec3_sub(rec->pos, s->center)));
+            float cosAMax = sqrtf(1.0f - s->radius * s->radius / vec3_sqmag(vec3_sub(rec->pos, s->pos)));
             float eps1 = randf_norm(), eps2 = randf_norm();
             float cosA = 1.0f - eps1 + eps1 * cosAMax;
             float sinA = sqrtf(1.0f - cosA * cosA);
@@ -107,11 +107,11 @@ static bool ray_scatter(Material* restrict mat, Ray* restrict ray, Hit* rec, vec
             l = vec3_normal(l);
             
             // shoot shadow ray
-            Hit lightHit;
+            Hit3D lightHit;
             int hitID;
-            Ray r = {rec->pos, l};
+            Ray3D r = {rec->pos, l};
             (*inoutRayCount)++;
-            if (scene_hit(&r, kMinT, kMaxT, &lightHit, &hitID) && hitID == i) {
+            if (scene_hit(&r, &lightHit, &hitID, kMinT, kMaxT) && hitID == i) {
                 float omega = 2.0 * M_PI * (1.0 - cosAMax);
                 
                 vec3 nl = vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : vec3_neg(rec->normal);
@@ -123,7 +123,7 @@ static bool ray_scatter(Material* restrict mat, Ray* restrict ray, Hit* rec, vec
     else if (mat->type == Metal) {
         vec3 refl = vec3_reflect(ray->dir, rec->normal);
         // reflected ray, and random inside of sphere based on roughness
-        *scattered = ray_new(rec->pos, vec3_normal(vec3_add(refl, vec3_mult(random_in_sphere(), mat->roughness))));
+        *scattered = ray3D_new(rec->pos, vec3_normal(vec3_add(refl, vec3_mult(random_in_sphere(), mat->roughness))));
         *attenuation = mat->albedo;
         return vec3_dot(scattered->dir, rec->normal) > 0.0f;
     }
@@ -149,8 +149,8 @@ static bool ray_scatter(Material* restrict mat, Ray* restrict ray, Hit* rec, vec
             reflProb = schlick(cosine, mat->ri);
         } else reflProb = 1.0f;
         
-        if (randf_norm() < reflProb) *scattered = ray_new(rec->pos, vec3_normal(refl));
-        else *scattered = ray_new(rec->pos, vec3_normal(refr));
+        if (randf_norm() < reflProb) *scattered = ray3D_new(rec->pos, vec3_normal(refl));
+        else *scattered = ray3D_new(rec->pos, vec3_normal(refr));
     }
     else {
         *attenuation = vec3_new(1.0f, 0.0f, 1.0f);
@@ -159,13 +159,13 @@ static bool ray_scatter(Material* restrict mat, Ray* restrict ray, Hit* rec, vec
     return true;
 }
 
-static vec3 ray_trace(Ray* restrict ray, int depth, int* inoutRayCount)
+static vec3 ray_trace(const Ray3D* restrict ray, int depth, int* inoutRayCount)
 {
-    Hit rec;
+    Hit3D rec;
     int id = 0;
     (*inoutRayCount)++;
-    if (scene_hit(ray, kMinT, kMaxT, &rec, &id)) {
-        Ray scattered;
+    if (scene_hit(ray, &rec, &id, kMinT, kMaxT)) {
+        Ray3D scattered;
         vec3 attenuation;
         vec3 lightE;
         Material* mat = &materials[id];
@@ -184,12 +184,12 @@ typedef struct JobData {
     int frameCount;
     int screenWidth, screenHeight;
     float* backbuffer;
-    Camera* cam;
+    Cam3D* cam;
     volatile int rayCount;
 } JobData;
 
 static JobData job;
-static Camera cam;
+static Cam3D cam;
 static vec3 lookfrom = {0.0, 1.0, 3.0};
 static vec3 lookat = {0.0, 0.0, 0.0};
 static float distToFocus = 5.0f;
@@ -224,7 +224,7 @@ static void* frame_row_render(void* args)
             for (int s = 0; s < samples_per_pixel; s++) {
                 float u = ((float)x + randf_norm()) * invWidth;
                 float v = ((float)y + randf_norm()) * invHeight;
-                Ray r = camera_ray(job.cam, u, v);
+                Ray3D r = camera_ray(job.cam, u, v);
                 col = vec3_add(col, ray_trace(&r, 0, &rayCount));
             }
             col = vec3_mult(col, 1.0f / (float)samples_per_pixel);
@@ -290,8 +290,8 @@ void scene_update(float time)
 {
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 90, (float)job.screenWidth / (float)job.screenHeight, aperture, distToFocus);
     distToFocus -= 0.5 * time;
-    spheres[7].center.x += time;
-    spheres[7].center.z -= time;
+    spheres[7].pos.x += time;
+    spheres[7].pos.z -= time;
 }
 
 int main(int argc, char** argv) 
@@ -324,9 +324,9 @@ int main(int argc, char** argv)
     //triangles = tracy_mesh_load("assets/suzanne.obj");
     
     printf("tracy is ready!\n");
-    triangles = array_new(1, sizeof(Triangle));
-    Triangle tri = {{-2, -0.5, 1}, {0, -0.5, 2}, {-1, 1, 1}, {0, 0, 0}};
-    tri.n = triangle_norm(&tri);
+    triangles = array_new(1, sizeof(Tri3D));
+    Tri3D tri = {{-2, -0.5, 1}, {0, -0.5, 2}, {-1, 1, 1}, {0, 0, 0}};
+    tri.n = tri3D_norm(&tri);
     array_push(triangles, &tri);
 
     float* backbuffer = (float*)malloc(sizeof(float) * width * height * 3);

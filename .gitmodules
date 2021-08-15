@@ -10,3 +10,6 @@
 [submodule "fract"]
 	path = fract
 	url = git@github.com:LogicEu/fract.git
+[submodule "photon"]
+	path = photon
+	url = git@github.com:LogicEu/photon.git
