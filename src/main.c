@@ -62,11 +62,11 @@ static void materials_init()
     }
 }
 
-array_t* tri3D_mesh_load(const char* path)
+static array_t* tri3D_mesh_load(const char* path)
 {
     mesh_t* mesh = mesh_load(path);
     array_t* arr = array_new(mesh->vertices->used / 3, sizeof(Tri3D));
-    for (unsigned int i = 0; i < arr->used; i++) {
+    for (unsigned int i = 0; i < arr->size; i++) {
         Tri3D tri;
         memcpy(&tri, array_index(mesh->vertices, i * 3), sizeof(vec3) * 3);
         tri.a.y += 0.5; tri.b.y += 0.5; tri.c.y += 0.5;
@@ -91,7 +91,7 @@ void scene_update(float time)
 {
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 90, (float)job.screenWidth / (float)job.screenHeight, aperture, distToFocus);
     lookfrom.z += time;
-    distToFocus -= time;
+    distToFocus += time;
 }
 
 int main(int argc, char** argv) 
