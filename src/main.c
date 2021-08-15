@@ -5,293 +5,93 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <pthread.h>
 
 const char* string_separator = "--------------------------------------------------------------------------------------------\n";
 
-static int samples_per_pixel = 400;
-static float animate_smoothing = 0.01f;
-static bool light_sampling = true;
+int samples_per_pixel = 400;
+float animate_smoothing = 0.01f;
+bool light_sampling = true;
 
-static array_t* triangles;
+Cam3D cam;
+vec3 lookfrom = {0.0, 1.0, 3.0};
+vec3 lookat = {0.0, 0.0, 0.0};
+float distToFocus = 5.0f;
+float aperture = 0.1f;
 
-static Sphere spheres[] = {
-    {{0, -100.5, -1}, 100},
-    {{2, 1, -1}, 0.5f},
-    {{0, 0, -1}, 0.5f},
-    {{-2, 1, -4}, 2.5f},
-    {{2, 0, 1}, 0.5f},
-    {{0, 3, 1}, 0.5f},
-    {{-2, 0, 2}, 0.5f},
-    {{-1.5f, 1.25, 2.f}, 0.5f},
-    {{-2.0f, 2.5f, 4.f}, 0.5f}
-};
+array_t* triangles;
+array_t* spheres;
+array_t* materials;
 
-static Material materials[] = {
-    { Lambert, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 },
-    { Lambert, {0.8f, 0.4f, 0.2f}, {0, 0, 0}, 0, 0 },
-    { Lambert, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
-    { Metal, {1.0f, 1.0f, 1.0f}, {0, 0, 0}, 0.0, 0 },
-    { Metal, {0.8f, 0.8f, 0.4f}, {0, 0, 0}, 0.8, 0 },
-    { Metal, {0.2f, 0.2f, 0.8f}, {0, 0, 0}, 0.1f, 0 },
-    { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.0f, 0.8 },
-    { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
-    { Lambert, {0.8f, 0.5f, 0.3f}, {20, 15, 5}, 0, 0 }
-};
-
-const int sphere_count = sizeof(spheres) / sizeof(spheres[0]);
-const float kMinT = 0.001f;
-const float kMaxT = 1.0e7f;
-const int kMaxDepth = 10;
-
-static float schlick(float cosine, float ri)
+static void spheres_init()
 {
-    float r0 = (1.0f - ri) / (1.0f + ri);
-    r0 = r0 * r0;
-    return r0 + (1.0f - r0) * powf(1.0 - cosine, 5.0);
-}
-
-static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, float tMin, float tMax)
-{
-    Hit3D tmpHit;
-    bool anything = false;
-    float closest = tMax;
-    for (int i = 0; i < sphere_count; ++i) {
-        if (sphere_hit(&spheres[i], ray, &tmpHit, tMin, closest)) {
-            anything = true;
-            closest = tmpHit.t;
-            *outHit = tmpHit;
-            *outID = i;
-        }
-    }
-    for (unsigned int i = 0; i < triangles->used; i++) {
-        if (tri3D_hit(array_index(triangles, i), ray, &tmpHit, tMin, closest)) {
-            anything = true;
-            closest = tmpHit.t;
-            *outHit = tmpHit;
-            *outID = 3;
-        }
-    }
-    return anything;
-}
-
-static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray, Hit3D* rec, vec3* attenuation, Ray3D* scattered, vec3* outLightE, int* inoutRayCount)
-{
-    *outLightE = vec3_uni(0.0f);
-    if (mat->type == Lambert) {
-        // random point inside unit sphere that is tangent to the hit point
-        vec3 target = vec3_add(rec->pos, vec3_add(rec->normal, random_in_sphere()));
-        *scattered = ray3D_new(rec->pos, vec3_normal(vec3_sub(target, rec->pos)));
-        *attenuation = mat->albedo;
-        
-        // sample lights
-        if (!light_sampling) return true;
-        for (int i = 0; i < sphere_count; ++i) {
-            Material* smat = &materials[i];
-            if (smat->emissive.x <= 0.0 && smat->emissive.y <= 0.0 && smat->emissive.z <= 0.0) continue; // skip non-emissive
-            if (mat == smat) continue; // skip self
-            Sphere* s = &spheres[i];
-            
-            // create a random direction towards sphere
-            // coord system for sampling: sw, su, sv
-            vec3 sw = vec3_normal(vec3_sub(s->pos, rec->pos));
-            vec3 su = vec3_normal(vec3_cross(fabs(sw.x) > 0.01f ? vec3_new(0.0, 1.0, 0.0) : vec3_new(1.0, 0.0, 0.0), sw));
-            vec3 sv = vec3_cross(sw, su);
-            // sample sphere by solid angle
-            float cosAMax = sqrtf(1.0f - s->radius * s->radius / vec3_sqmag(vec3_sub(rec->pos, s->pos)));
-            float eps1 = randf_norm(), eps2 = randf_norm();
-            float cosA = 1.0f - eps1 + eps1 * cosAMax;
-            float sinA = sqrtf(1.0f - cosA * cosA);
-            float phi = 2 * M_PI * eps2;
-            vec3 l = vec3_add(vec3_mult(su, cosf(phi) * sinA), vec3_add(vec3_mult(sv, sin(phi) * sinA), vec3_mult(sw, cosA)));
-            l = vec3_normal(l);
-            
-            // shoot shadow ray
-            Hit3D lightHit;
-            int hitID;
-            Ray3D r = {rec->pos, l};
-            (*inoutRayCount)++;
-            if (scene_hit(&r, &lightHit, &hitID, kMinT, kMaxT) && hitID == i) {
-                float omega = 2.0 * M_PI * (1.0 - cosAMax);
-                
-                vec3 nl = vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : vec3_neg(rec->normal);
-                *outLightE = vec3_add(*outLightE, vec3_mult(vec3_prod(mat->albedo, smat->emissive), maxf(0.0f, vec3_dot(l, nl)) * omega / M_PI));
-            }
-        }
-        return true;
-    }
-    else if (mat->type == Metal) {
-        vec3 refl = vec3_reflect(ray->dir, rec->normal);
-        // reflected ray, and random inside of sphere based on roughness
-        *scattered = ray3D_new(rec->pos, vec3_normal(vec3_add(refl, vec3_mult(random_in_sphere(), mat->roughness))));
-        *attenuation = mat->albedo;
-        return vec3_dot(scattered->dir, rec->normal) > 0.0f;
-    }
-    else if (mat->type == Dielectric) {
-        vec3 outwardN;
-        vec3 refl = vec3_reflect(ray->dir, rec->normal);
-        float nint;
-        *attenuation = vec3_uni(1.0f);
-        vec3 refr;
-        float reflProb;
-        float cosine;
-        if (vec3_dot(ray->dir, rec->normal) > 0.0f) {
-            outwardN = vec3_neg(rec->normal);
-            nint = mat->ri;
-            cosine = mat->ri * vec3_dot(ray->dir, rec->normal);
-        } else {
-            outwardN = rec->normal;
-            nint = 1.0f / mat->ri;
-            cosine = -vec3_dot(ray->dir, rec->normal);
-        }
-        
-        if (vec3_refract(ray->dir, outwardN, nint, &refr)) {
-            reflProb = schlick(cosine, mat->ri);
-        } else reflProb = 1.0f;
-        
-        if (randf_norm() < reflProb) *scattered = ray3D_new(rec->pos, vec3_normal(refl));
-        else *scattered = ray3D_new(rec->pos, vec3_normal(refr));
-    }
-    else {
-        *attenuation = vec3_new(1.0f, 0.0f, 1.0f);
-        return false;
-    }
-    return true;
-}
-
-static vec3 ray_trace(const Ray3D* restrict ray, int depth, int* inoutRayCount)
-{
-    Hit3D rec;
-    int id = 0;
-    (*inoutRayCount)++;
-    if (scene_hit(ray, &rec, &id, kMinT, kMaxT)) {
-        Ray3D scattered;
-        vec3 attenuation;
-        vec3 lightE;
-        Material* mat = &materials[id];
-        if (depth < kMaxDepth && ray_scatter(mat, ray, &rec, &attenuation, &scattered, &lightE, inoutRayCount)) {
-            return vec3_add(mat->emissive, vec3_add(lightE, vec3_prod(attenuation, ray_trace(&scattered, depth + 1, inoutRayCount))));
-        } else return mat->emissive;
-    } else {
-        // Sky
-        float t = 0.3f * (ray->dir.y + 1.0f);
-        return vec3_mult(vec3_add(vec3_mult(vec3_new(0.7f, 0.7f, 1.0f), 1.0f - t), vec3_mult(vec3_new(0.5f, 0.7f, 1.0f), t)), 0.03f);
-        //return vec3_uni(0.0);
+    Sphere s[] = {
+        {{0, -100.5, -1}, 100},
+        {{2, 1, -1}, 0.5f},
+        {{0, 0, -1}, 0.5f},
+        {{-2, 1, -4}, 2.5f},
+        {{2, 0, 1}, 0.5f},
+        {{0, 3, 1}, 0.5f},
+        {{-2, 0, 2}, 0.5f},
+        {{-1.5f, 1.25, 2.f}, 0.5f},
+        {{-2.0f, 2.5f, 4.f}, 0.5f}
+    };
+    
+    spheres = array_new(sizeof(s) / sizeof(s[0]), sizeof(Sphere));
+    for (unsigned int i = 0; i < spheres->size; i++) {
+        array_push(spheres, &s[i]);
     }
 }
 
-typedef struct JobData {
-    int frameCount;
-    int screenWidth, screenHeight;
-    float* backbuffer;
-    Cam3D* cam;
-    volatile int rayCount;
-} JobData;
-
-static JobData job;
-static Cam3D cam;
-static vec3 lookfrom = {0.0, 1.0, 3.0};
-static vec3 lookat = {0.0, 0.0, 0.0};
-static float distToFocus = 5.0f;
-static float aperture = 0.1f;
-
-#define CLMPF(x) ((x) * ((x) < 1.0) + (float)(x >= 1.0))
-
-static void* frame_row_render(void* args)
+static void materials_init()
 {
-    volatile static bool first = true;
-    volatile static int frame = 1;
-    bool check = first;
-    first = false;
-
-    uint32_t* uarg = args;
-    uint32_t start = *(uarg++);
-    uint32_t end = *uarg;
-
-    static struct timespec time_start, time_end;
-    if (check) clock_gettime(CLOCK_MONOTONIC, &time_start);
-
-    float* backbuffer = job.backbuffer + start * job.screenWidth * 3;
-    float invWidth = 1.0f / job.screenWidth;
-    float invHeight = 1.0f / job.screenHeight;
-    float lerpFac = (float)job.frameCount / (float)(job.frameCount + 1);
-    lerpFac *= animate_smoothing;
-
-    int rayCount = 0;
-    for (uint32_t y = start; y < end; ++y) {
-        for (int x = 0; x < job.screenWidth; ++x) {
-            vec3 col = vec3_uni(0.0f);
-            for (int s = 0; s < samples_per_pixel; s++) {
-                float u = ((float)x + randf_norm()) * invWidth;
-                float v = ((float)y + randf_norm()) * invHeight;
-                Ray3D r = camera_ray(job.cam, u, v);
-                col = vec3_add(col, ray_trace(&r, 0, &rayCount));
-            }
-            col = vec3_mult(col, 1.0f / (float)samples_per_pixel);
-            col = vec3_new(sqrtf(col.x), sqrtf(col.y), sqrtf(col.z));
-            
-            vec3 prev = vec3_new(backbuffer[0], backbuffer[1], backbuffer[2]);
-            col = vec3_add(vec3_mult(prev, lerpFac), vec3_mult(col, (1.0f - lerpFac)));
-            backbuffer[0] = CLMPF(col.x);
-            backbuffer[1] = CLMPF(col.y);
-            backbuffer[2] = CLMPF(col.z);
-            backbuffer += 3;
-            if (check) {
-                clock_gettime(CLOCK_MONOTONIC, &time_end);
-                double time_elapsed = (time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0;
-                int samp = (y - start) * job.screenWidth + x + 1, off = (end - start) * job.screenWidth;
-                float perc = ((float)samp / (float)off) * 100.0f;
-                double time_estimate = time_elapsed * 100.0f / perc;
-                double time_remaining = time_estimate - time_elapsed;
-                printf("\rframe\t%d\t%.01f%%\t( %d\t/ %d\t)\t%.03fs\t\t%.03fs\t\t%.03fs", frame, perc, samp, off, time_elapsed, time_estimate, time_remaining);
-            }
-        }
+    Material m[] = {
+        { Lambert, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0, 0 },
+        { Lambert, {0.8f, 0.4f, 0.2f}, {0, 0, 0}, 0, 0 },
+        { Lambert, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0, 0 },
+        { Metal, {1.0f, 1.0f, 1.0f}, {0, 0, 0}, 0.0, 0 },
+        { Metal, {0.8f, 0.8f, 0.4f}, {0, 0, 0}, 0.8, 0 },
+        { Metal, {0.2f, 0.2f, 0.8f}, {0, 0, 0}, 0.1f, 0 },
+        { Metal, {0.4f, 0.8f, 0.4f}, {0, 0, 0}, 0.0f, 0.8 },
+        { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
+        { Lambert, {0.8f, 0.5f, 0.3f}, {20, 15, 5}, 0, 0 }
+    };
+    
+    materials = array_new(sizeof(m) / sizeof(m[0]), sizeof(Material));
+    for (unsigned int i = 0; i < materials->size; i++) {
+        array_push(materials, &m[i]);
     }
-    if (check) {
-        frame++;
-        first = true;
-        printf("\n");
-    }
-    job.rayCount += rayCount;
-    return NULL;
 }
 
-static void frame_render()
-{   
-    uint32_t args[] = {0, job.screenHeight};
-    frame_row_render(&args[0]);
+array_t* tri3D_mesh_load(const char* path)
+{
+    mesh_t* mesh = mesh_load(path);
+    array_t* arr = array_new(mesh->vertices->used / 3, sizeof(Tri3D));
+    for (unsigned int i = 0; i < arr->used; i++) {
+        Tri3D tri;
+        memcpy(&tri, array_index(mesh->vertices, i * 3), sizeof(vec3) * 3);
+        tri.a.y += 0.5; tri.b.y += 0.5; tri.c.y += 0.5;
+        tri.n = tri3D_norm(&tri);
+        array_push(arr, &tri);
+    }
+    array_cut(arr);
+    mesh_free(mesh);
+    return arr;
 }
 
-static void frame_render_threaded(int thread_count)
+static void triangles_init()
 {
-    uint32_t chunk = job.screenHeight / thread_count;
-    uint32_t start = 0, end = chunk;
-
-    pthread_t threads[thread_count - 1];
-    uint32_t args[thread_count][2];
-    for (int i = 0; i < thread_count - 1; i++) {
-        args[i][0] = start;
-        args[i][1] = end;
-        pthread_create(&threads[i], NULL, *frame_row_render, &args[i][0]);
-        start += chunk;
-        end += chunk;
-    }
-
-    args[thread_count - 1][0] = start;
-    args[thread_count - 1][1] = end;
-    frame_row_render(&args[thread_count - 1][0]);
-
-    for (int i = 0; i < thread_count - 1; i++) {
-        pthread_join(threads[i], NULL);
-    }
+    //triangles = tri3D_mesh_load("assets/suzanne.obj");
+    triangles = array_new(1, sizeof(Tri3D));
+    Tri3D tri = {{-2, -0.5, 1}, {0, -0.5, 2}, {-1, 1, 1}, {0, 0, 0}};
+    tri.n = tri3D_norm(&tri);
+    array_push(triangles, &tri);
 }
 
 void scene_update(float time)
 {
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), 90, (float)job.screenWidth / (float)job.screenHeight, aperture, distToFocus);
-    distToFocus -= 0.5 * time;
-    spheres[7].pos.x += time;
-    spheres[7].pos.z -= time;
+    lookfrom.z += time;
+    distToFocus -= time;
 }
 
 int main(int argc, char** argv) 
@@ -321,13 +121,13 @@ int main(int argc, char** argv)
     }
 
     bmp_t bmps[iters];
-    //triangles = tracy_mesh_load("assets/suzanne.obj");
+    spheres_init();
+    materials_init();
+    triangles_init();
+
+    printf("spheres %d\ntriangles %d\nmaterials %d\n", spheres->used, triangles->used, materials->used);
     
     printf("tracy is ready!\n");
-    triangles = array_new(1, sizeof(Tri3D));
-    Tri3D tri = {{-2, -0.5, 1}, {0, -0.5, 2}, {-1, 1, 1}, {0, 0, 0}};
-    tri.n = tri3D_norm(&tri);
-    array_push(triangles, &tri);
 
     float* backbuffer = (float*)malloc(sizeof(float) * width * height * 3);
     job.frameCount = iters;

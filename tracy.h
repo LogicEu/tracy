@@ -35,11 +35,41 @@ typedef struct Cam3D {
     float lensRadius;
 } Cam3D;
 
+typedef struct JobData {
+    int frameCount;
+    int screenWidth, screenHeight;
+    float* backbuffer;
+    Cam3D* cam;
+    volatile int rayCount;
+} JobData;
+
+/* ... */
+
+extern int samples_per_pixel;
+extern float animate_smoothing;
+extern bool light_sampling;
+
+extern JobData job;
+extern Cam3D cam;
+extern vec3 lookfrom;
+extern vec3 lookat;
+extern float distToFocus;
+extern float aperture;
+
+extern array_t* triangles;
+extern array_t* spheres;
+extern array_t* materials;
+
 /* ... */
 
 Cam3D camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
 Ray3D camera_ray(const Cam3D* cam, float s, float t);
 array_t* tracy_mesh_load(const char* path);
+
+vec3 ray_trace(const Ray3D* restrict ray, int depth, int* inoutRayCount);
+
+void frame_render();
+void frame_render_threaded(int thread_count);
 
 #ifdef __cplusplus
 }
