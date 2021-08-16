@@ -96,7 +96,7 @@ void scene_update(float time)
 
 int main(int argc, char** argv) 
 {   
-    int ray_count = 0, iters = 1, threads = 8;
+    int ray_count = 0, iters = 1, threads = 16;
     uint32_t width = 400, height = 400;
     char path[128], op[128];
 
@@ -125,8 +125,6 @@ int main(int argc, char** argv)
     materials_init();
     triangles_init();
 
-    printf("spheres %d\ntriangles %d\nmaterials %d\n", spheres->used, triangles->used, materials->used);
-    
     printf("tracy is ready!\n");
 
     float* backbuffer = (float*)malloc(sizeof(float) * width * height * 3);

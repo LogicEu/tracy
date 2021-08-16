@@ -98,6 +98,12 @@ elif [[ "$1" == "-run" ]]; then
 elif [[ "$1" == "-clean" ]]; then
     clean
     exit
+elif [[ "$1" == "-all" ]]; then
+    build
+    comp
+    shift
+    ./$name "$@"
+    exit
 else 
     fail
 fi

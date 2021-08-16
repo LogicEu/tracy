@@ -31,7 +31,7 @@ static void* frame_render_job(void* args)
     int rayCount = 0;
     for (uint32_t y = start; y < end; ++y) {
         for (int x = 0; x < job.screenWidth; ++x) {
-            vec3 col = vec3_uni(0.0f);
+            vec3 col = _vec3_uni(0.0f);
             for (int s = 0; s < samples_per_pixel; s++) {
                 float u = ((float)x + randf_norm()) * invWidth;
                 float v = ((float)y + randf_norm()) * invHeight;

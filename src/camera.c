@@ -21,6 +21,6 @@ Ray3D camera_ray(const Cam3D* restrict cam, float s, float t)
 {
     vec3 rd = vec3_mult(random_in_disk(), cam->lensRadius);
     vec3 offset = vec3_add(vec3_mult(cam->u, rd.x), vec3_mult(cam->v, rd.y));
-    vec3 p = vec3_add(cam->origin, offset);
+    vec3 p = _vec3_add(cam->origin, offset);
     return ray3D_new(p, vec3_normal(vec3_sub(vec3_add(cam->lowerLeftCorner, vec3_add(vec3_mult(cam->horizontal, s), vec3_mult(cam->vertical, t))), p)));
 }

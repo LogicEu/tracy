@@ -4,7 +4,7 @@ const float kMinT = 0.001f;
 const float kMaxT = 1.0e7f;
 const int kMaxDepth = 10;
 
-static float schlick(float cosine, float ri)
+static inline float schlick(float cosine, float ri)
 {
     float r0 = (1.0f - ri) / (1.0f + ri);
     r0 = r0 * r0;
@@ -59,7 +59,7 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
             // create a random direction towards sphere
             // coord system for sampling: sw, su, sv
             vec3 sw = vec3_normal(vec3_sub(s->pos, rec->pos));
-            vec3 su = vec3_normal(vec3_cross(fabs(sw.x) > 0.01f ? vec3_new(0.0, 1.0, 0.0) : vec3_new(1.0, 0.0, 0.0), sw));
+            vec3 su = vec3_normal(vec3_cross(_absf(sw.x) > 0.01f ? vec3_new(0.0, 1.0, 0.0) : vec3_new(1.0, 0.0, 0.0), sw));
             vec3 sv = vec3_cross(sw, su);
             // sample sphere by solid angle
             float cosAMax = sqrtf(1.0f - s->radius * s->radius / vec3_sqmag(vec3_sub(rec->pos, s->pos)));
@@ -78,8 +78,8 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
             if (scene_hit(&r, &lightHit, &hitID, kMinT, kMaxT) && hitID == i) {
                 float omega = 2.0 * M_PI * (1.0 - cosAMax);
                 
-                vec3 nl = vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : vec3_neg(rec->normal);
-                *outLightE = vec3_add(*outLightE, vec3_mult(vec3_prod(mat->albedo, smat->emissive), maxf(0.0f, vec3_dot(l, nl)) * omega / M_PI));
+                vec3 nl = _vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : vec3_neg(rec->normal);
+                *outLightE = vec3_add(*outLightE, vec3_mult(vec3_prod(mat->albedo, smat->emissive), _maxf(0.0f, _vec3_dot(l, nl)) * omega / M_PI));
             }
             s++;
         }
@@ -90,7 +90,7 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
         // reflected ray, and random inside of sphere based on roughness
         *scattered = ray3D_new(rec->pos, vec3_normal(vec3_add(refl, vec3_mult(random_in_sphere(), mat->roughness))));
         *attenuation = mat->albedo;
-        return vec3_dot(scattered->dir, rec->normal) > 0.0f;
+        return _vec3_dot(scattered->dir, rec->normal) > 0.0f;
     }
     else if (mat->type == Dielectric) {
         vec3 outwardN;
@@ -100,14 +100,14 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
         vec3 refr;
         float reflProb;
         float cosine;
-        if (vec3_dot(ray->dir, rec->normal) > 0.0f) {
+        if (_vec3_dot(ray->dir, rec->normal) > 0.0f) {
             outwardN = vec3_neg(rec->normal);
             nint = mat->ri;
-            cosine = mat->ri * vec3_dot(ray->dir, rec->normal);
+            cosine = mat->ri * _vec3_dot(ray->dir, rec->normal);
         } else {
             outwardN = rec->normal;
             nint = 1.0f / mat->ri;
-            cosine = -vec3_dot(ray->dir, rec->normal);
+            cosine = -_vec3_dot(ray->dir, rec->normal);
         }
         
         if (vec3_refract(ray->dir, outwardN, nint, &refr)) {
