@@ -33,8 +33,14 @@ lib=(
     -ljpeg
 )
 
-mac_os=(
+mac=(
     #-mmacosx-version-min=10.10
+)
+
+linux=(
+    -lm
+    -lpthread
+    -D_POSIX_C_SOURCE=199309L
 )
 
 fail() {
@@ -60,9 +66,9 @@ build() {
 
 comp() {
     if echo "$OSTYPE" | grep -q "darwin"; then
-        $comp $src -o $name $std ${flags[*]} ${mac_os[*]} ${inc[*]} ${lib[*]}
+        $comp $src -o $name $std ${flags[*]} ${mac[*]} ${inc[*]} ${lib[*]}
     elif echo "$OSTYPE" | grep -q "linux"; then
-        $comp $src -o $name $std ${flags[*]} ${inc[*]} ${lib[*]} -lm
+        $comp $src -o $name $std ${flags[*]} ${inc[*]} ${lib[*]} ${linux[*]}
     else
         echo "OS not supported yet"
         exit
@@ -91,18 +97,15 @@ elif [[ "$1" == "-comp" ]]; then
     comp
     exit
 elif [[ "$1" == "-run" ]]; then
-    comp
     shift
-    ./$name "$@"
+    comp && ./$name "$@"
     exit
 elif [[ "$1" == "-clean" ]]; then
     clean
     exit
 elif [[ "$1" == "-all" ]]; then
-    build
-    comp
     shift
-    ./$name "$@"
+    build && comp && ./$name "$@"
     exit
 else 
     fail
