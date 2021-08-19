@@ -139,8 +139,8 @@ vec3 ray_trace(const Ray3D* restrict ray, int depth, int* inoutRayCount)
         } else return mat->emissive;
     } else {
         // Sky
-        float t = 0.3f * (ray->dir.y + 1.0f);
-        return vec3_mult(vec3_add(vec3_mult(vec3_new(0.7f, 0.7f, 1.0f), 1.0f - t), vec3_mult(vec3_new(0.5f, 0.7f, 1.0f), t)), 0.3f);
-        //return vec3_uni(0.0);
+        //float t = 0.3f * (ray->dir.y + 1.0f);
+        //return vec3_mult(vec3_add(vec3_mult(vec3_new(0.7f, 0.7f, 1.0f), 1.0f - t), vec3_mult(vec3_new(0.5f, 0.7f, 1.0f), t)), 0.3f);
+        return vec3_uni(0.0);
     }
 }
