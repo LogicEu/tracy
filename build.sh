@@ -8,7 +8,7 @@ std='-std=c99'
 flags=(
     -Wall
     -Wextra
-    -O2
+    -O3
 )
 
 inc=(

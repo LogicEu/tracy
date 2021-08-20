@@ -45,9 +45,12 @@ typedef struct JobData {
 
 /* ... */
 
+#define PERF 1
+
 extern int samples_per_pixel;
 extern float animate_smoothing;
 extern bool light_sampling;
+extern float fov;
 
 extern JobData job;
 extern Cam3D cam;
@@ -62,14 +65,14 @@ extern array_t* materials;
 
 /* ... */
 
+double time_clock();
+void scene_init();
+void frame_render(int thread_count);
+
 Cam3D camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
 Ray3D camera_ray(const Cam3D* cam, float s, float t);
-array_t* tracy_mesh_load(const char* path);
 
 vec3 ray_trace(const Ray3D* restrict ray, int depth, int* inoutRayCount);
-
-void frame_render();
-void frame_render_threaded(int thread_count);
 
 #ifdef __cplusplus
 }

@@ -14,26 +14,26 @@ static inline float schlick(float cosine, float ri)
 static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, float tMin, float tMax)
 {
     Hit3D tmpHit;
-    bool anything = false;
     float closest = tMax;
-
-    Sphere* sphere = spheres->data;
-    for (unsigned int i = 0; i < spheres->used; ++i) {
-        if (sphere_hit(sphere++, ray, &tmpHit, tMin, closest)) {
-            anything = true;
-            closest = tmpHit.t;
-            *outHit = tmpHit;
-            *outID = i;
-        }
-    }
+    bool anything = false;
 
     Tri3D* tri = triangles->data;
     for (unsigned int i = 0; i < triangles->used; i++) {
         if (tri3D_hit(tri++, ray, &tmpHit, tMin, closest)) {
-            anything = true;
             closest = tmpHit.t;
             *outHit = tmpHit;
             *outID = 3;
+            anything = true;
+        }
+    }
+
+    Sphere* sphere = spheres->data;
+    for (unsigned int i = 0; i < spheres->used; ++i) {
+        if (sphere_hit(sphere++, ray, &tmpHit, tMin, closest)) {
+            closest = tmpHit.t;
+            *outHit = tmpHit;
+            *outID = i;
+            anything = true;
         }
     }
     return anything;

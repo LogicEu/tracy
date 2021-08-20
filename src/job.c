@@ -10,17 +10,19 @@ JobData job;
 
 static void* frame_render_job(void* args)
 {
+    uint32_t* uarg = args;
+    uint32_t start = *(uarg++);
+    uint32_t end = *uarg;
+    
+#if PERF
     volatile static bool first = true;
     volatile static int frame = 1;
     bool check = first;
     first = false;
 
-    uint32_t* uarg = args;
-    uint32_t start = *(uarg++);
-    uint32_t end = *uarg;
-
-    static struct timespec time_start, time_end;
-    if (check) clock_gettime(CLOCK_MONOTONIC, &time_start);
+    double time;
+    if (check) time = time_clock();
+#endif
 
     float* backbuffer = job.backbuffer + start * job.screenWidth * 3;
     float invWidth = 1.0f / job.screenWidth;
@@ -31,7 +33,7 @@ static void* frame_render_job(void* args)
     int rayCount = 0;
     for (uint32_t y = start; y < end; ++y) {
         for (int x = 0; x < job.screenWidth; ++x) {
-            vec3 col = _vec3_uni(0.0f);
+            vec3 col = {0.0, 0.0, 0.0};
             for (int s = 0; s < samples_per_pixel; s++) {
                 float u = ((float)x + randf_norm()) * invWidth;
                 float v = ((float)y + randf_norm()) * invHeight;
@@ -47,33 +49,30 @@ static void* frame_render_job(void* args)
             backbuffer[1] = CLMPF(col.y);
             backbuffer[2] = CLMPF(col.z);
             backbuffer += 3;
+#if PERF
             if (check) {
-                clock_gettime(CLOCK_MONOTONIC, &time_end);
-                double time_elapsed = (time_end.tv_sec - time_start.tv_sec) + (time_end.tv_nsec - time_start.tv_nsec) / 1000000000.0;
+                double time_elapsed = time_clock() - time;
                 int samp = (y - start) * job.screenWidth + x + 1, off = (end - start) * job.screenWidth;
                 float perc = ((float)samp / (float)off) * 100.0f;
                 double time_estimate = time_elapsed * 100.0f / perc;
                 double time_remaining = time_estimate - time_elapsed;
-                printf("\rframe\t%d\t%.01f%%\t( %d\t/ %d\t)\t%.03fs\t\t%.03fs\t\t%.03fs", frame, perc, samp, off, time_elapsed, time_estimate, time_remaining);
+                printf("\rframe\t%d\t%.01f%%\t( %d\t/ %d\t)\t%.01fs\t\t%.01fs\t\t%.01fs", frame, perc, samp, off, time_elapsed, time_estimate, time_remaining);
             }
+#endif
         }
     }
+#if PERF
     if (check) {
         frame++;
         first = true;
         printf("\n");
     }
+#endif
     job.rayCount += rayCount;
     return NULL;
 }
 
-void frame_render()
-{   
-    uint32_t args[] = {0, job.screenHeight};
-    frame_render_job(&args[0]);
-}
-
-void frame_render_threaded(int thread_count)
+void frame_render(int thread_count)
 {
     uint32_t chunk = job.screenHeight / thread_count;
     uint32_t start = 0, end = chunk;
