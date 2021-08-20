@@ -63,6 +63,9 @@ extern array_t* triangles;
 extern array_t* spheres;
 extern array_t* materials;
 
+extern vec3 skyColor;
+extern float skyMult;
+
 /* ... */
 
 double time_clock();
@@ -72,7 +75,7 @@ void frame_render(int thread_count);
 Cam3D camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
 Ray3D camera_ray(const Cam3D* cam, float s, float t);
 
-vec3 ray_trace(const Ray3D* restrict ray, int depth, int* inoutRayCount);
+vec3 ray_trace(const Ray3D* ray, int depth, int* inoutRayCount);
 
 #ifdef __cplusplus
 }
