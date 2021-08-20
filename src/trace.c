@@ -22,7 +22,7 @@ static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, floa
         if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
             closest = tmpHit.t;
             *outHit = tmpHit;
-            *outID = 3;
+            *outID = *(int*)array_index(trimaterials, i);
             anything = true;
         }
     }
@@ -32,7 +32,7 @@ static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, floa
         if (sphere_hit(sphere++, ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
             closest = tmpHit.t;
             *outHit = tmpHit;
-            *outID = i;
+            *outID = *(int*)array_index(sphmaterials, i);
             anything = true;
         }
     }

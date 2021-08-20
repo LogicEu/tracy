@@ -60,7 +60,9 @@ extern float distToFocus;
 extern float aperture;
 
 extern array_t* triangles;
+extern array_t* trimaterials;
 extern array_t* spheres;
+extern array_t* sphmaterials;
 extern array_t* materials;
 
 extern vec3 skyColor;

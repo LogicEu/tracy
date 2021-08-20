@@ -18,30 +18,57 @@ array_t* spheres;
 array_t* sphmaterials;
 
 array_t* triangles;
-array_t* trinormals;
 array_t* trimaterials;
 
 vec3 skyColor = {1.0, 0.3, 1.0};
 float skyMult = 0.2;
 
+static void stars_init(int count)
+{
+    for (int i = 0; i < count; i++) {
+        vec3 v = random_in_sphere();
+        v.y = absf(v.y);
+        Sphere s = {vec3_mult(v, 100.0), 0.2};
+        int mat = 2;
+        array_push(spheres, &s);
+        array_push(sphmaterials, &mat);
+    }
+    array_cut(spheres);
+    array_cut(sphmaterials);
+}
+
 static void spheres_init()
 {
+    int mat = 0;
     Sphere s;
     spheres = array_new(5, sizeof(Sphere));
+    sphmaterials = array_new(5, sizeof(int));
 
     s = sphere_new(vec3_new(0.0, -101.5, 0.0), 100.0);
     array_push(spheres, &s);
+    array_push(sphmaterials, &mat);
+
+    mat++;
     s = sphere_new(vec3_new(-2.0, 0.5, 0.0), 0.8);
     array_push(spheres, &s);
+    array_push(sphmaterials, &mat);
+
+    mat++;
     s = sphere_new(vec3_new(-2.0, 4.2, 0.0), 1.0);
     array_push(spheres, &s);
+    array_push(sphmaterials, &mat);
+
+    mat++;
     s = sphere_new(vec3_new(0.2, 1.0, 0.0), 1.0);
     array_push(spheres, &s);
+    array_push(sphmaterials, &mat);
+
     s = sphere_new(vec3_new(0.0, 5.0, 10.0), 7.0);
     array_push(spheres, &s);
-}
+    array_push(sphmaterials, &mat);
 
-#define _material_new(cr, cg, cb, lr, lg, lb, r, ri) {{cr, cg, cb}, {lr, lg, lb}, r, ri}
+    //stars_init(200);
+}
 
 static void materials_init()
 {
@@ -51,7 +78,6 @@ static void materials_init()
         { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
         { Lambert, {0.8f, 0.5f, 0.3f}, {25, 15, 5}, 0, 0 },
         { Metal, {1.0, 1.0, 1.0}, {0, 0, 0}, 0, 0 },
-        { Metal, {1.0, 1.0, 1.0}, {0, 0, 0}, 0, 0 }
     };
 
     for (unsigned int i = 0; i < materials->size; i++) {
@@ -87,14 +113,15 @@ static void triangles_init()
 {
     //triangles = tri3D_mesh_load("assets/suzanne.obj");
     //tri3D_mesh_move(triangles, vec3_new(0.0, 0.8, 0.0));
+    
     Tri3D tri;
     triangles = array_new(2, sizeof(Tri3D));
-    
-    //tri = tri3D_new(vec3_new(-0.8, -1.4, 1.3), vec3_new(-0.8, -1.4, -1.3), vec3_new(-3, 0.4, 0));
-    //array_push(triangles, &tri);
+    trimaterials = array_new(2, sizeof(int));
 
+    int mat = 3;
     tri = tri3D_new(vec3_new(-6, -1.4, 4), vec3_new(-6, -1.4, -4), vec3_new(-3, 6, 0));
     array_push(triangles, &tri);
+    array_push(trimaterials, &mat);
 }
 
 void scene_init()
