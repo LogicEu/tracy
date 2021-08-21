@@ -1,7 +1,7 @@
 #!/bin/bash
 
 name=tracy
-comp=gcc
+cc=gcc
 src=src/*.c
 std='-std=c99'
 
@@ -49,10 +49,7 @@ fail() {
 }
 
 lib_build() {
-    pushd $1/
-    ./build.sh $2
-    popd 
-    mv $1/lib$1.a lib/lib$1.a
+    pushd $1/ && ./build.sh $2 && mv *.a ../lib/ && popd
 }
 
 build() {
@@ -66,47 +63,29 @@ build() {
 
 comp() {
     if echo "$OSTYPE" | grep -q "darwin"; then
-        $comp $src -o $name $std ${flags[*]} ${mac[*]} ${inc[*]} ${lib[*]}
+        $cc $src -o $name $std ${flags[*]} ${mac[*]} ${inc[*]} ${lib[*]}
     elif echo "$OSTYPE" | grep -q "linux"; then
-        $comp $src -o $name $std ${flags[*]} ${inc[*]} ${lib[*]} ${linux[*]}
+        $cc $src -o $name $std ${flags[*]} ${inc[*]} ${lib[*]} ${linux[*]}
     else
-        echo "OS not supported yet"
-        exit
+        echo "OS not supported yet" && exit
     fi
 }
 
 clean() {
-    rm -r lib/
-    rm $name
+    rm -r lib/ && rm $name
 }
 
-if [[ $# < 1 ]]; then
-    fail
-elif [[ "$1" == "-cpp" ]]; then
-    shift
-    echo "C++"
-    std='-std=c++17'
-    comp=g++
-    src=*.cpp
-fi
-
-if [[ "$1" == "-build" ]]; then
-    build
-    exit
-elif [[ "$1" == "-comp" ]]; then
-    comp
-    exit
-elif [[ "$1" == "-run" ]]; then
-    shift
-    comp && ./$name "$@"
-    exit
-elif [[ "$1" == "-clean" ]]; then
-    clean
-    exit
-elif [[ "$1" == "-all" ]]; then
-    shift
-    build && comp && ./$name "$@"
-    exit
-else 
-    fail
-fi
+case "$1" in
+    "-build")
+        build;;
+    "-comp")
+        comp;;
+    "-run")
+        comp && ./$name "$@";;
+    "-clean")
+        clean;;
+    "-all")
+        build && comp && ./$name "$@";;
+    *)
+        fail;;
+esac
