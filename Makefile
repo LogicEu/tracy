@@ -39,7 +39,7 @@ $(LDIR)%.a: %
 	cd $^ && make && mv $@ ../
 
 clean:
-	rm -r $(LDIR) && rm $(NAME) && rm imgtool/imgtool
+	rm -r $(LDIR) && rm $(NAME)
 	
 install: $(NAME)
 	sudo cp $^ /usr/local/bin/

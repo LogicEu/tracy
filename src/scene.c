@@ -26,7 +26,7 @@ float skyMult = 0.2;
 static void stars_init(int count)
 {
     for (int i = 0; i < count; i++) {
-        vec3 v = random_in_sphere();
+        vec3 v = vec3_rand();
         v.y = absf(v.y);
         Sphere s = {vec3_mult(v, 100.0), 0.2};
         int mat = 2;

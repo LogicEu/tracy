@@ -45,7 +45,7 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
     vec3 P = _ray3D_at(ray, rec->t);
     if (mat->type == Lambert) {
         // random point inside unit sphere that is tangent to the hit point
-        vec3 target = vec3_add(P, vec3_add(rec->normal, random_in_sphere()));
+        vec3 target = vec3_add(P, vec3_add(rec->normal, vec3_rand()));
         *scattered = ray3D_new(P, vec3_normal(vec3_sub(target, P)));
         *attenuation = mat->albedo;
         
@@ -89,7 +89,7 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
     else if (mat->type == Metal) {
         vec3 refl = vec3_reflect(ray->dir, rec->normal);
         // reflected ray, and random inside of sphere based on roughness
-        *scattered = ray3D_new(P, vec3_normal(vec3_add(refl, vec3_mult(random_in_sphere(), mat->roughness))));
+        *scattered = ray3D_new(P, vec3_normal(vec3_add(refl, vec3_mult(vec3_rand(), mat->roughness))));
         *attenuation = mat->albedo;
         return _vec3_dot(scattered->dir, rec->normal) > 0.0f;
     }
