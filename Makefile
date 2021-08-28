@@ -38,8 +38,8 @@ $(LDIR):
 $(LDIR)%.a: %
 	cd $^ && make && mv $@ ../
 
+exe:
+	$(CC) -o $(NAME) $(SRC) $(CFLAGS) $(LFLAGS) $(OSFLAGS)
+
 clean:
 	rm -r $(LDIR) && rm $(NAME)
-	
-install: $(NAME)
-	sudo cp $^ /usr/local/bin/

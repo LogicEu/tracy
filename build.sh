@@ -34,7 +34,7 @@ lib=(
 )
 
 mac=(
-    #-mmacosx-version-min=10.10
+    #-mmacosx-version-min=10.9
 )
 
 linux=(
