@@ -15,8 +15,8 @@ static void* frame_render_job(void* args)
     uint32_t end = *uarg;
     
 #if PERF
-    volatile static bool first = true;
-    volatile static int frame = 1;
+    static volatile bool first = true;
+    static volatile int frame = 1;
     bool check = first;
     first = false;
 
