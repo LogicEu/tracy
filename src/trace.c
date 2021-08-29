@@ -29,7 +29,7 @@ static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, floa
 
     Sphere* sphere = spheres->data;
     for (unsigned int i = 0; i < spheres->used; ++i) {
-        if (sphere_hit(sphere++, ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
+        if (sphere_hit(*(sphere++), ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
             closest = tmpHit.t;
             *outHit = tmpHit;
             *outID = *(int*)array_index(sphmaterials, i);
