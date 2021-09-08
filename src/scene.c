@@ -20,7 +20,7 @@ array_t* sphmaterials;
 array_t* triangles;
 array_t* trimaterials;
 
-vec3 skyColor = {1.0, 0.3, 1.0};
+vec3 skyColor = {0.3, 0.3, 1.0};
 float skyMult = 0.2;
 
 static void stars_init(int count)

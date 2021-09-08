@@ -18,6 +18,8 @@ inc=(
     -Iutopia/
     -Imass/
     -Iphoton/
+    -Iglee/
+    -Igleex/
     -I.
 )
 
@@ -28,18 +30,24 @@ lib=(
     -lutopia
     -lmass
     -lphoton
+    -lglee
+    -lgleex
     -lz
     -lpng
     -ljpeg
+    -lglfw
 )
 
 mac=(
+    -framework OpenGL
     #-mmacosx-version-min=10.9
 )
 
 linux=(
     -lm
     -lpthread
+    -lGL
+    -lGLEW
     -D_POSIX_C_SOURCE=199309L
 )
 
@@ -59,6 +67,8 @@ build() {
     lib_build imgtool -slib
     lib_build mass -s
     lib_build photon -s
+    lib_build glee -s
+    lib_build gleex -s
 }
 
 comp() {
@@ -81,10 +91,12 @@ case "$1" in
     "-comp")
         comp;;
     "-run")
+        shift
         comp && ./$name "$@";;
     "-clean")
         clean;;
     "-all")
+        shift
         build && comp && ./$name "$@";;
     *)
         fail;;

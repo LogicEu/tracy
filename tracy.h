@@ -45,7 +45,7 @@ typedef struct JobData {
 
 /* ... */
 
-#define PERF 1
+#define PERF 0
 
 extern int samples_per_pixel;
 extern float animate_smoothing;
@@ -69,6 +69,9 @@ extern vec3 skyColor;
 extern float skyMult;
 
 /* ... */
+
+#define __clampf(val, min, max) (val * (val >= min && val <= max) + min * (val < min) + max * (val > max))
+#define _clampf(val, min, max) __clampf((val), (min), (max))
 
 double time_clock();
 void scene_init();

@@ -4,7 +4,7 @@ STD=-std=c99
 WFLAGS=-Wall -Wextra
 OPT=-O2
 IDIR=-I. -Iinclude
-LIBS=fract utopia photon mass imgtool
+LIBS=fract utopia photon mass imgtool glee gleex
 CC=gcc
 NAME=tracy
 SRC=src/*.c
@@ -18,12 +18,12 @@ LSTATIC=$(patsubst %,lib%.a,$(LIBS))
 LPATHS=$(patsubst %,$(LDIR)/%,$(LSTATIC))
 LFLAGS=$(patsubst %,-L%,$(LDIR))
 LFLAGS += $(patsubst %,-l%,$(LIBS))
-LFLAGS += -lz -lpng -ljpeg
+LFLAGS += -lz -lpng -ljpeg -lglfw
 
 ifeq ($(OS),Darwin)
-	OSFLAGS=-mmacos-version-min=10.9
+	OSFLAGS=-framework OpenGL #-mmacos-version-min=10.9
 else 
-	OSFLAGS=-lm -lpthread -D_POSIX_C_SOURCE=199309L
+	OSFLAGS=-lm -lpthread -lGL -lGLEW -D_POSIX_C_SOURCE=199309L
 endif
 
 $(NAME): $(LPATHS) $(SRC)
