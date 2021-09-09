@@ -181,7 +181,8 @@ int main(int argc, char** argv)
 
     texture_t tex = texture_from_bmp(&bmp);
     //texture_t tex = texture_load("assets/textures/sprite.png");
-    vec2 pos = {(float)width * 0.5, (float)height * 0.5};
+    vec2 pos = {(float)width * 0.5, (float)height * 0.5}, mouse, mousePos;
+    glee_mouse_pos_3d(&mouse.x, &mouse.y);
     float Dtime = glee_time_get();
 
     glee_screen_color(0.3, 0.3, 1.0, 1.0);
@@ -190,6 +191,9 @@ int main(int argc, char** argv)
         float delta_time = glee_time_delta(&Dtime);
         float time = glee_time_get();
         float delta_speed = delta_time * 4;
+
+        glee_mouse_pos_3d(&mousePos.x, &mousePos.y);
+        vec2 mouseCursor = vec2_sub(mouse, mousePos);
 
         if (glee_key_pressed(GLFW_KEY_ESCAPE)) break;
         if (glee_key_down(GLFW_KEY_W)) {
@@ -222,6 +226,8 @@ int main(int argc, char** argv)
         }
         
         //vec3_print(lookfrom);
+        lookat.x = mouseCursor.x;
+        lookat.y = mouseCursor.y;
         cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), fov, (float)width / (float)height, aperture, distToFocus);
         //glUseProgram(shader);
         //textureDraw(tex, pos, 0.0);

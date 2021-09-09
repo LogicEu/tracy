@@ -177,34 +177,13 @@ bool ray_scatter(Material mat, Ray3D ray, inout Hit3D rec, inout vec3 attenuatio
     return false;
 }
 
-vec3 ray_traceD(Ray3D ray, int depth)
-{
-    Hit3D rec;
-    int id;
-
-    if (scene_hit(ray, rec, id, kMinT, kMaxT)) {
-        Ray3D scattered;
-        vec3 attenuation = vec3(0.0);
-        vec3 light = vec3(0.0);
-        Material mat = g_material;
-
-        if (depth < kMaxDepth && ray_scatter(mat, ray, rec, attenuation, scattered, light)) {
-            return mat.emissive + light + attenuation;// * ray_traceD(scattered, depth + 1);
-        } else return mat.emissive;
-    } else {
-        // Sky
-        float t = clamp(ray.dir.y, 0.1, 1.0) * 0.3;
-        return vec3(0.3, 0.3, 1.0) * t;
-    }
-}
-
 vec3 ray_trace(Ray3D ray, int depth)
 {
     Hit3D rec;
     int id;
 
     if (scene_hit(ray, rec, id, kMinT, kMaxT)) {
-        return g_material.albedo * rec.normal;
+        return rec.normal;
         /*Ray3D scattered;
         vec3 attenuation = vec3(0.0);
         vec3 light = vec3(0.0);
@@ -220,29 +199,19 @@ vec3 ray_trace(Ray3D ray, int depth)
     }
 }
 
-vec3 path_tracy(Ray3D ray)
-{
-    vec4 sphere = g_sphere;
-    vec3 col = vec3(0.0);
-    vec3 oc = ray.orig - sphere.xyz;
-    float b = dot(oc, ray.dir);
-    float c = dot(oc, oc) - sphere.w * sphere.w;
-    float discr = b * b - c;
-    float n = float(discr > 0.0);
-    col.r = n;
-    return col;
-}
-
 void main()
 {   
-    vec2 uv = (gl_FragCoord.xy - u_resolution) / u_resolution.y;
-
     float res = u_resolution.x / u_resolution.y;
-    vec3 up = vec3(0.0, 1.0, 0.0);
+    vec2 uv = (gl_FragCoord.xy - u_resolution) / u_resolution.y;
+    vec2 unit = vec2(1.0) / u_resolution;
 
-    Cam3D cam = camera_new(u_position, u_lookat, up, 70.0, res, 0.1, 8.0);
-    Ray3D ray = camera_ray(cam, uv.x, uv.y);
-    vec3 c = ray_trace(ray, 1);
+    vec3 lookat = u_lookat;
+    vec3 right = cross(lookat, vec3(0.0, 1.0, 0.0));
+    vec3 up = cross(right, lookat);
+
+    Cam3D cam = camera_new(u_position, lookat, up, 40.0, res, 0.1, 8.0);
+    Ray3D ray = camera_ray(cam, uv.x + rand(uv) * unit.x, uv.y + rand(uv) * unit.y);
+    vec3 c = ray_trace(ray, 0);
 
     FragColor = vec4(c, 1.0);
 }
