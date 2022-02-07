@@ -22,13 +22,12 @@ static void* frame_render_job(void* args)
 
     double time;
     if (check) time = time_clock();
-    float lerpFac = (float)frame / (float)(frame + 1);
-#else  
-    float lerpFac = (float)job.frameCount / (float)(job.frameCount + 1);
 #endif
+
     float* backbuffer = job.backbuffer + start * job.screenWidth * 3;
     float invWidth = 1.0f / job.screenWidth;
     float invHeight = 1.0f / job.screenHeight;
+    float lerpFac = (float)job.frameCount / (float)(job.frameCount + 1);
     lerpFac *= animate_smoothing;
 
     int rayCount = 0;
@@ -42,16 +41,10 @@ static void* frame_render_job(void* args)
                 col = vec3_add(col, ray_trace(&r, 0, &rayCount));
             }
             col = vec3_mult(col, 1.0f / (float)samples_per_pixel);
-            //col = vec3_mult(col, 1.0f / (float)frame);
             col = vec3_new(sqrtf(col.x), sqrtf(col.y), sqrtf(col.z));
             
             vec3 prev = vec3_new(backbuffer[0], backbuffer[1], backbuffer[2]);
             col = vec3_add(vec3_mult(prev, lerpFac), vec3_mult(col, (1.0f - lerpFac)));
-            
-            //if (col.x > backbuffer[0]) backbuffer[0] = minf(backbuffer[0] + col.x / frame, 1.0);
-            //if (col.y > backbuffer[1]) backbuffer[1] = minf(backbuffer[1] + col.y / frame, 1.0);
-            //if (col.z > backbuffer[2]) backbuffer[2] = minf(backbuffer[2] + col.z / frame, 1.0);
-            
             backbuffer[0] = CLMPF(col.x);
             backbuffer[1] = CLMPF(col.y);
             backbuffer[2] = CLMPF(col.z);

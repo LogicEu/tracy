@@ -13,9 +13,3 @@
 [submodule "photon"]
 	path = photon
 	url = git@github.com:LogicEu/photon.git
-[submodule "glee"]
-	path = glee
-	url = git@github.com:LogicEu/glee.git
-[submodule "gleex"]
-	path = gleex
-	url = git@github.com:LogicEu/gleex.git
