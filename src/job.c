@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define CLMPF(x) ((x) * ((x) < 1.0) + (float)(x >= 1.0))
+#define CLMPF(x) ((x) * ((x) < 1.0) + (float)((x) >= 1.0))
 
 JobData job;
 

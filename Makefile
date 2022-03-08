@@ -3,7 +3,7 @@
 STD=-std=c99
 WFLAGS=-Wall -Wextra
 OPT=-O2
-IDIR=-I. -Iinclude
+IDIR=-I.
 LIBS=fract utopia photon mass imgtool
 CC=gcc
 NAME=tracy
@@ -42,4 +42,5 @@ exe:
 	$(CC) -o $(NAME) $(SRC) $(CFLAGS) $(LFLAGS) $(OSFLAGS)
 
 clean:
-	rm -r $(LDIR) && rm $(NAME)
+	./build.sh -clean
+

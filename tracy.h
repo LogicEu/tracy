@@ -6,7 +6,7 @@
 #endif
 
 /****************
-Tracy path tracer
+tracy path tracer
 ****************/
 
 #include <mass.h>

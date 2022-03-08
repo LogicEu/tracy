@@ -1,13 +1,29 @@
 #include <tracy.h>
 #include <imgtool.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 const char* string_separator = "--------------------------------------------------------------------------------------------\n";
 
-void scene_update(float time)
+int tracy_error(const char* restrict str)
+{
+    fprintf(stderr, "%s", str);
+    return EXIT_FAILURE;
+}
+
+int tracy_help()
+{
+    fprintf(stdout, "Options:\n");
+    fprintf(stdout, "-w <number>\t:Set the width in pixels of output image.\n");
+    fprintf(stdout, "-h <number>\t:Set the height in pixels of output image.\n");
+    fprintf(stdout, "-j <number>\t:Set the number of threads to use.\n");
+    fprintf(stdout, "-f <number>\t:Set the number of frames to output.\n");
+    fprintf(stdout, "-spp <number>\t:Set the number of samples per pixel to calculate.\n");
+    return EXIT_SUCCESS;
+}
+
+void tracy_scene_update(float time)
 {
     lookfrom.x -= time;
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), fov, (float)job.screenWidth / (float)job.screenHeight, aperture, distToFocus);
@@ -21,24 +37,60 @@ int main(int argc, char** argv)
     uint32_t width = 400, height = 400;
     char path[128], op[128];
 
-    if (argc > 1) width = (uint32_t)atoi(argv[1]);
-    if (argc > 2) height = (uint32_t)atoi(argv[2]);
-    if (argc > 3) frames = atoi(argv[3]);
-    if (argc > 4) samples_per_pixel = atoi(argv[4]);
-    if (argc > 5) threads = atoi(argv[5]);
-
-    if (!frames) {
-        printf("frame count cannot be 0.\n");
-        return EXIT_FAILURE;
-    } else if (!threads) {
-        printf("thread count cannot be 0.\n");
-        return EXIT_FAILURE;
-    } else if (!width || !height) {
-        printf("width and height cannot be 0.\n");
-        return EXIT_FAILURE;
-    } else if (!samples_per_pixel) {
-        printf("samples per pixel cannot be 0.\n");
-        return EXIT_FAILURE;
+    for (int i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i], "-help")) {
+            return tracy_help();
+        }
+        else if (!strcmp(argv[i], "-w")) {
+            if (++i < argc) {
+                uint32_t w = (uint32_t)atoi(argv[i]);
+                if (w < 1 || w > 3840) {
+                    return tracy_error("-w option cannot be smaller than 1 or larger than 3840\n");
+                } 
+                else width = w;
+            } 
+            else return tracy_error("missing input for option -w\n");
+        }
+        else if (!strcmp(argv[i], "-h")) {
+            if (++i < argc) {
+                uint32_t h = (uint32_t)atoi(argv[i]);
+                if (h < 1 || h > 2160) {
+                    return tracy_error("-h option cannot be smaller than 1 or larger than 2160\n");
+                } 
+                else height = h;
+            } 
+            else return tracy_error("missing input for option -h\n");
+        }
+        else if (!strcmp(argv[i], "-j")) {
+            if (++i < argc) {
+                uint32_t j = (uint32_t)atoi(argv[i]);
+                if (j < 1 || j > 128) {
+                    return tracy_error("-j option cannot be smaller than 1 or larger than 128\n");
+                }
+                else threads = j;
+            }
+            else return tracy_error("missing input for option -j\n");
+        }
+        else if (!strcmp(argv[i], "-spp")) {
+            if (++i < argc) {
+                int spp = atoi(argv[i]);
+                if (spp < 1) {
+                    return tracy_error("-spp option cannot be smaller than 1\n");
+                }
+                else samples_per_pixel = spp;
+            }
+            else return tracy_error("missing input for option -spp\n");
+        }
+        else if (!strcmp(argv[i], "-f")) {
+            if (++i < argc) {
+                int f = atoi(argv[i]);
+                if (f < 1) {
+                    return tracy_error("-f option cannot be smaller than 1\n");
+                }
+                else frames = f;
+            }
+            else return tracy_error("missing input for option -f\n");
+        }
     }
 
     bmp_t bmps[frames];
@@ -62,7 +114,7 @@ int main(int argc, char** argv)
     double time = time_clock();
     for (int i = 0; i < frames; i++) {
         int ray = 0;
-        scene_update((float)i * 0.02);
+        tracy_scene_update((float)i * 0.02);
         frame_render(threads);
         ray_count += ray;
         bmp_t bmp = bmp_new(width, height, 3);
@@ -95,5 +147,6 @@ int main(int argc, char** argv)
 #endif
     strcat(op, path);
     system(op);
+    
     return EXIT_SUCCESS;
 }

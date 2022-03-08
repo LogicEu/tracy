@@ -12,13 +12,12 @@ flags=(
 )
 
 inc=(
-    -Iinclude/
+    -I./
     -Iimgtool/
     -Ifract/
     -Iutopia/
     -Imass/
     -Iphoton/
-    -I.
 )
 
 lib=(
@@ -72,7 +71,13 @@ comp() {
 }
 
 clean() {
-    rm -r lib/ && rm $name
+    if [ -f $name ]; then
+        rm $name
+    fi
+    
+    if [ -d lib ]; then
+        rm -r lib
+    fi
 }
 
 case "$1" in

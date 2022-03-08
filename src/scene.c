@@ -77,7 +77,7 @@ static void materials_init()
         { Lambert, {0.8f, 0.8f, 0.8f}, {0, 0, 0}, 0.6, 0 },
         { Dielectric, {0.4f, 0.4f, 0.4f}, {0, 0, 0}, 0, 1.5f },
         { Lambert, {0.8f, 0.5f, 0.3f}, {25, 15, 5}, 0, 0 },
-        { Metal, {1.0, 1.0, 1.0}, {0, 0, 0}, 0, 0 },
+        { Metal, {1.0, 1.0, 1.0}, {0, 0, 0}, 0.01, 0 },
     };
 
     for (unsigned int i = 0; i < materials->size; i++) {
