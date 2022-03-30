@@ -27,13 +27,13 @@ void tracy_scene_update(float time)
 {
     lookfrom.x -= time;
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), fov, (float)job.screenWidth / (float)job.screenHeight, aperture, distToFocus);
-    Sphere* s = (Sphere*)spheres->data + 1;
+    Sphere* s = (Sphere*)spheres.data + 1;
     s->pos.y += time * 0.2;
 }
 
 int main(int argc, char** argv) 
 {   
-    int ray_count = 0, frames = 1, threads = 16;
+    int frames = 1, threads = 16;
     uint32_t width = 400, height = 400;
     char path[128], op[128];
 
@@ -113,10 +113,9 @@ int main(int argc, char** argv)
 
     double time = time_clock();
     for (int i = 0; i < frames; i++) {
-        int ray = 0;
+
         tracy_scene_update((float)i * 0.02);
         frame_render(threads);
-        ray_count += ray;
         bmp_t bmp = bmp_new(width, height, 3);
         for (uint32_t j = 0; j < width * height * 3; j++) {
             bmp.pixels[j] = (uint8_t)(backbuffer[j] * 255.0f);

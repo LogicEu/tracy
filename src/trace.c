@@ -10,29 +10,29 @@ static inline float schlick(float cosine, float ri)
     r0 = r0 * r0;
     return r0 + (1.0f - r0) * powf(1.0 - cosine, 5.0);
 }
-
+#include <stdio.h>
 static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, float tMin, float tMax)
 {
     Hit3D tmpHit;
     float closest = tMax;
     bool anything = false;
 
-    Tri3D* tri = triangles->data;
-    for (unsigned int i = 0; i < triangles->used; i++) {
+    Tri3D* tri = triangles.data;
+    for (unsigned int i = 0; i < triangles.size; i++) {
         if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
             closest = tmpHit.t;
             *outHit = tmpHit;
-            *outID = *(int*)array_index(trimaterials, i);
+            *outID = *(int*)array_index(&trimaterials, i);
             anything = true;
         }
     }
 
-    Sphere* sphere = spheres->data;
-    for (unsigned int i = 0; i < spheres->used; ++i) {
+    Sphere* sphere = spheres.data;
+    for (unsigned int i = 0; i < spheres.size; ++i) {
         if (sphere_hit(*(sphere++), ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
             closest = tmpHit.t;
             *outHit = tmpHit;
-            *outID = *(int*)array_index(sphmaterials, i);
+            *outID = *(int*)array_index(&sphmaterials, i);
             anything = true;
         }
     }
@@ -51,9 +51,9 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
         
         // sample lights
         if (!light_sampling) return true;
-        Sphere* s = spheres->data;
-        for (int i = 0; i < (int)spheres->used; ++i) {
-            Material* smat = array_index(materials, i);
+        Sphere* s = spheres.data;
+        for (int i = 0; i < (int)spheres.size; ++i) {
+            Material* smat = array_index(&materials, i);
             if (smat->emissive.x <= 0.0 && smat->emissive.y <= 0.0 && smat->emissive.z <= 0.0) continue; // skip non-emissive
             if (mat == smat) continue; // skip self
             
@@ -133,7 +133,7 @@ vec3 ray_trace(const Ray3D* restrict ray, int depth, int* inoutRayCount)
     if (scene_hit(ray, &rec, &id, kMinT, kMaxT)) {
         Ray3D scattered;
         vec3 attenuation, light;
-        Material* mat = (Material*)materials->data + id;
+        Material* mat = (Material*)materials.data + id;
         if (depth < kMaxDepth && ray_scatter(mat, ray, &rec, &attenuation, &scattered, &light, inoutRayCount)) {
             return vec3_add(mat->emissive, vec3_add(light, vec3_prod(attenuation, ray_trace(&scattered, depth + 1, inoutRayCount))));
         } else return mat->emissive;

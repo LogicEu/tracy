@@ -29,7 +29,7 @@ static void* frame_render_job(void* args)
     float invHeight = 1.0f / job.screenHeight;
     float lerpFac = (float)job.frameCount / (float)(job.frameCount + 1);
     lerpFac *= animate_smoothing;
-
+    
     int rayCount = 0;
     for (uint32_t y = start; y < end; ++y) {
         for (int x = 0; x < job.screenWidth; ++x) {
@@ -79,6 +79,7 @@ void frame_render(int thread_count)
 
     pthread_t threads[thread_count - 1];
     uint32_t args[thread_count][2];
+
     for (int i = 0; i < thread_count - 1; i++) {
         args[i][0] = start;
         args[i][1] = end;
@@ -86,7 +87,6 @@ void frame_render(int thread_count)
         start += chunk;
         end += chunk;
     }
-
     args[thread_count - 1][0] = start;
     args[thread_count - 1][1] = end;
     frame_render_job(&args[thread_count - 1][0]);
