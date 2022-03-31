@@ -14,7 +14,7 @@ static void* frame_render_job(void* args)
     uint32_t start = *(uarg++);
     uint32_t end = *uarg;
     
-#if PERF
+#ifdef PERF
     static volatile bool first = true;
     static volatile int frame = 1;
     bool check = first;
@@ -29,7 +29,7 @@ static void* frame_render_job(void* args)
     float invHeight = 1.0f / job.screenHeight;
     float lerpFac = (float)job.frameCount / (float)(job.frameCount + 1);
     lerpFac *= animate_smoothing;
-    
+
     int rayCount = 0;
     for (uint32_t y = start; y < end; ++y) {
         for (int x = 0; x < job.screenWidth; ++x) {
@@ -49,7 +49,7 @@ static void* frame_render_job(void* args)
             backbuffer[1] = CLMPF(col.y);
             backbuffer[2] = CLMPF(col.z);
             backbuffer += 3;
-#if PERF
+#ifdef PERF
             if (check) {
                 double time_elapsed = time_clock() - time;
                 int samp = (y - start) * job.screenWidth + x + 1, off = (end - start) * job.screenWidth;
@@ -61,7 +61,7 @@ static void* frame_render_job(void* args)
 #endif
         }
     }
-#if PERF
+#ifdef PERF
     if (check) {
         frame++;
         first = true;

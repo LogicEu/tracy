@@ -12,6 +12,8 @@ float distToFocus = 8.0f;
 float aperture = 0.1f;
 float fov = 70.0;
 
+BoundingBox boundingBox;
+
 array_t materials;
 
 array_t spheres;
@@ -49,14 +51,14 @@ static void spheres_init()
     array_push(&sphmaterials, &mat);
 
     mat++;
-    s = sphere_new(vec3_new(-2.0, 0.5, 0.0), 0.8);
+    s = sphere_new(vec3_new(-8.0, 0.5, 0.0), 0.8);
     array_push(&spheres, &s);
     array_push(&sphmaterials, &mat);
 
     mat++;
-    s = sphere_new(vec3_new(-2.0, 4.2, 0.0), 1.0);
+    s = sphere_new(vec3_new(-2.0, 6.2, 0.0), 1.0);
     array_push(&spheres, &s);
-    array_push(&sphmaterials, &mat);
+    array_push(&sphmaterials, &mat);/*
 
     mat++;
     s = sphere_new(vec3_new(0.2, 1.0, 0.0), 1.0);
@@ -65,7 +67,7 @@ static void spheres_init()
 
     s = sphere_new(vec3_new(0.0, 5.0, 10.0), 7.0);
     array_push(&spheres, &s);
-    array_push(&sphmaterials, &mat);
+    array_push(&sphmaterials, &mat);*/
 
     //stars_init(200);
 }
@@ -85,16 +87,38 @@ static void materials_init()
     }
 }
 
+BoundingBox bounding_box_from_mesh(const vec3* restrict v, const size_t count)
+{
+    /*              min                max              */
+    BoundingBox bb = {_vec3_uni(1000.0), _vec3_uni(-1000.0)};
+
+    for (size_t i = 0; i < count; ++i, ++v) {
+        
+        if (v->x < bb.min.x) bb.min.x = v->x;
+        if (v->y < bb.min.y) bb.min.y = v->y;
+        if (v->z < bb.min.z) bb.min.z = v->z;
+
+        if (v->x > bb.max.x) bb.max.x = v->x;
+        if (v->y > bb.max.y) bb.max.y = v->y;
+        if (v->z > bb.max.z) bb.max.z = v->z;
+
+    }
+
+    return bb;
+}
+
 static array_t tri3D_mesh_load(const char* path)
 {
     mesh_t mesh = mesh_load(path);
+    trimaterials = array_reserve(sizeof(int), mesh.vertices.size / 3);
     array_t arr = array_reserve(sizeof(Tri3D), mesh.vertices.size / 3);
-    for (unsigned int i = 0; i < arr.size; i++) {
-        Tri3D tri;
-        memcpy(&tri, array_index(&mesh.vertices, i * 3), sizeof(vec3) * 3);
-        array_push(&arr, &tri);
+    
+    int mat = 0; 
+    for (unsigned int i = 0; i < arr.capacity; i++) {
+        array_push(&arr, array_index(&mesh.vertices, i * 3));
+        array_push(&trimaterials, &mat);
     }
-    array_cut(&arr);
+    
     mesh_free(&mesh);
     return arr;
 }
@@ -111,17 +135,19 @@ static void tri3D_mesh_move(const array_t* restrict triangles, const vec3 trans)
 
 static void triangles_init()
 {
-    //triangles = tri3D_mesh_load("assets/suzanne.obj");
-    //tri3D_mesh_move(triangles, vec3_new(0.0, 0.8, 0.0));
-    
-    Tri3D tri;
-    triangles = array_create(sizeof(Tri3D));
-    trimaterials = array_create(sizeof(int));
+    triangles = tri3D_mesh_load("assets/suzanne.obj");
+    tri3D_mesh_move(&triangles, vec3_new(0.0, 0.4, 0.0));
+    boundingBox = bounding_box_from_mesh(triangles.data, triangles.size * 3);
 
-    int mat = 3;
-    tri = tri3D_new(vec3_new(-6, -1.4, 4), vec3_new(-6, -1.4, -4), vec3_new(-3, 6, 0));
-    array_push(&triangles, &tri);
-    array_push(&trimaterials, &mat);
+    //int m = 0;
+    //Tri3D tri;
+    //triangles = array_create(sizeof(Tri3D));
+    //trimaterials = array_create(sizeof(int));
+    //array_push(&trimaterials, &m);
+
+    //tri = tri3D_new(vec3_new(-6, -1.4, 4), vec3_new(-6, -1.4, -4), vec3_new(-3, 6, 0));
+    //array_push(&triangles, &tri);
+    //array_push(&trimaterials, &m);
 }
 
 void scene_init()

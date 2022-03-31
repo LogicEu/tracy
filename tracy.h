@@ -26,6 +26,11 @@ typedef struct Material {
     float ri;
 } Material;
 
+typedef struct BoundingBox {
+    vec3 min;
+    vec3 max;
+} BoundingBox;
+
 typedef struct Cam3D {
     vec3 origin;
     vec3 lowerLeftCorner;
@@ -45,7 +50,9 @@ typedef struct JobData {
 
 /* ... */
 
-#define PERF 1
+#define PERF
+
+extern BoundingBox boundingBox;
 
 extern int samples_per_pixel;
 extern float animate_smoothing;

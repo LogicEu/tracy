@@ -10,20 +10,71 @@ static inline float schlick(float cosine, float ri)
     r0 = r0 * r0;
     return r0 + (1.0f - r0) * powf(1.0 - cosine, 5.0);
 }
-#include <stdio.h>
+
+static inline void fswap(float* restrict a, float* restrict b)
+{
+    float tmp = *b;
+    *b = *a;
+    *a = tmp;
+}
+
+static bool bounding_box_aabb(const BoundingBox* restrict bb, const Ray3D* restrict ray)
+{
+    float tmin = (bb->min.x - ray->orig.x) / ray->dir.x; 
+    float tmax = (bb->max.x - ray->orig.x) / ray->dir.x; 
+ 
+    if (tmin > tmax) {
+        fswap(&tmin, &tmax);
+    }
+ 
+    float tymin = (bb->min.y - ray->orig.y) / ray->dir.y; 
+    float tymax = (bb->max.y - ray->orig.y) / ray->dir.y; 
+ 
+    if (tymin > tymax) 
+        fswap(&tymin, &tymax); 
+ 
+    if ((tmin > tymax) || (tymin > tmax)) 
+        return false; 
+ 
+    if (tymin > tmin) 
+        tmin = tymin; 
+ 
+    if (tymax < tmax) 
+        tmax = tymax; 
+ 
+    float tzmin = (bb->min.z - ray->orig.z) / ray->dir.z; 
+    float tzmax = (bb->max.z - ray->orig.z) / ray->dir.z; 
+ 
+    if (tzmin > tzmax) 
+        fswap(&tzmin, &tzmax); 
+ 
+    if ((tmin > tzmax) || (tzmin > tmax)) 
+        return false; 
+ 
+    if (tzmin > tmin) 
+        tmin = tzmin; 
+ 
+    if (tzmax < tmax) 
+        tmax = tzmax; 
+ 
+    return true; 
+}
+
 static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, float tMin, float tMax)
 {
     Hit3D tmpHit;
     float closest = tMax;
     bool anything = false;
 
-    Tri3D* tri = triangles.data;
-    for (unsigned int i = 0; i < triangles.size; i++) {
-        if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
-            closest = tmpHit.t;
-            *outHit = tmpHit;
-            *outID = *(int*)array_index(&trimaterials, i);
-            anything = true;
+    if (bounding_box_aabb(&boundingBox, ray)) {
+        Tri3D* tri = triangles.data;
+        for (unsigned int i = 0; i < triangles.size; i++) {
+            if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
+                closest = tmpHit.t;
+                *outHit = tmpHit;
+                *outID = *(int*)array_index(&trimaterials, i);
+                anything = true;
+            }
         }
     }
 

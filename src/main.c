@@ -27,8 +27,8 @@ void tracy_scene_update(float time)
 {
     lookfrom.x -= time;
     cam = camera_new(lookfrom, lookat, vec3_new(0.0, 1.0, 0.0), fov, (float)job.screenWidth / (float)job.screenHeight, aperture, distToFocus);
-    Sphere* s = (Sphere*)spheres.data + 1;
-    s->pos.y += time * 0.2;
+    //Sphere* s = (Sphere*)spheres.data + 1;
+    //s->pos.y += time * 0.2;
 }
 
 int main(int argc, char** argv) 
