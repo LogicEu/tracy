@@ -7,29 +7,27 @@
 
 /****************
 tracy path tracer
+*****************
+@Eugenio Arteaga
 ****************/
 
-#include <mass.h>
-#include <photon.h>
-
-typedef enum {
-    Lambert, 
-    Metal,
-    Dielectric
-} MatEnum;
+#include <stdint.h>
+#include <mass/mass.h>
+#include <photon/photon.h>
+#include <imgtool/imgtool.h>
 
 typedef struct Material {
-    MatEnum type;
+    enum MatType {
+        Invisible,
+        Lambert, 
+        Metal,
+        Dielectric
+    } type;
     vec3 albedo;
     vec3 emissive;
     float roughness;
     float ri;
 } Material;
-
-typedef struct BoundingBox {
-    vec3 min;
-    vec3 max;
-} BoundingBox;
 
 typedef struct Cam3D {
     vec3 origin;
@@ -40,51 +38,61 @@ typedef struct Cam3D {
     float lensRadius;
 } Cam3D;
 
-typedef struct JobData {
-    int frameCount;
-    int screenWidth, screenHeight;
-    float* backbuffer;
-    Cam3D* cam;
-    volatile int rayCount;
-} JobData;
+typedef struct Model3D {
+    array_t triangles;
+    Box3D bounds;
+} Model3D;
 
-/* ... */
+typedef struct Scene3D {
+    Cam3D cam;
+    array_t materials;
+    array_t spheres;
+    array_t sphere_materials;
+    array_t triangles;
+    array_t triangle_materials;
+    array_t models;
+    vec3 background_color;
+} Scene3D;
 
-#define PERF
+typedef struct Render3D {
+    float* buffer;
+    uint32_t width;
+    uint32_t height;
+    uint32_t spp;
+    uint32_t frames;
+    uint32_t threads;
+} Render3D;
 
-extern BoundingBox boundingBox;
+/* configurations */
 
-extern int samples_per_pixel;
-extern float animate_smoothing;
-extern bool light_sampling;
-extern float fov;
+//#define TRACY_PERF
+#define TRACY_MAX_DEPTH 10
+#define TRACY_MIN_DIST 0.001f
+#define TRACY_MAX_DIST 1.0e7f
 
-extern JobData job;
-extern Cam3D cam;
-extern vec3 lookfrom;
-extern vec3 lookat;
-extern float distToFocus;
-extern float aperture;
-
-extern array_t triangles;
-extern array_t trimaterials;
-extern array_t spheres;
-extern array_t sphmaterials;
-extern array_t materials;
-
-extern vec3 skyColor;
-extern float skyMult;
-
-/* ... */
+/* API */
 
 double time_clock();
-void scene_init();
-void frame_render(int thread_count);
 
-Cam3D camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist);
-Ray3D camera_ray(const Cam3D* cam, float s, float t);
+Render3D render3D_new(const uint32_t width, const uint32_t height, const uint32_t spp);
+bmp_t render3D_render(const Render3D* render, const Scene3D* scene);
+void render3D_set(Render3D* render);
+void render3D_free(Render3D* render);
 
-vec3 ray_trace(const Ray3D* ray, int depth, int* inoutRayCount);
+Model3D* model3D_load(const char* filename);
+void model3D_free(Model3D* model);
+void model3D_move(const Model3D* model, const vec3 trans);
+void model3D_scale(const Model3D* model, const float scale);
+void model3D_scale3D(const Model3D* model, const vec3 scale);
+
+Scene3D* scene3D_load(const char* filename, const float aspect);
+bool scene3D_hit(const Scene3D* scene, const Ray3D* ray, Hit3D* outHit, size_t* outID);
+void scene3D_free(Scene3D* free);
+
+Cam3D cam3D_new(const vec3 lookFrom, const vec3 lookAt, const vec3 up, const float fov, const float aspect, const float aperture, const float focusDist);
+Ray3D cam3D_ray(const Cam3D* cam, const float s, const float p);
+
+vec3 ray3D_trace(const Scene3D* scene, const Ray3D* ray, const uint32_t depth);
 
 #ifdef __cplusplus
 }

@@ -1,9 +1,5 @@
 #include <tracy.h>
 
-const float kMinT = 0.001f;
-const float kMaxT = 1.0e7f;
-const int kMaxDepth = 10;
-
 static inline float schlick(float cosine, float ri)
 {
     float r0 = (1.0f - ri) / (1.0f + ri);
@@ -11,86 +7,7 @@ static inline float schlick(float cosine, float ri)
     return r0 + (1.0f - r0) * powf(1.0 - cosine, 5.0);
 }
 
-static inline void fswap(float* restrict a, float* restrict b)
-{
-    float tmp = *b;
-    *b = *a;
-    *a = tmp;
-}
-
-static bool bounding_box_aabb(const BoundingBox* restrict bb, const Ray3D* restrict ray)
-{
-    float tmin = (bb->min.x - ray->orig.x) / ray->dir.x; 
-    float tmax = (bb->max.x - ray->orig.x) / ray->dir.x; 
- 
-    if (tmin > tmax) {
-        fswap(&tmin, &tmax);
-    }
- 
-    float tymin = (bb->min.y - ray->orig.y) / ray->dir.y; 
-    float tymax = (bb->max.y - ray->orig.y) / ray->dir.y; 
- 
-    if (tymin > tymax) 
-        fswap(&tymin, &tymax); 
- 
-    if ((tmin > tymax) || (tymin > tmax)) 
-        return false; 
- 
-    if (tymin > tmin) 
-        tmin = tymin; 
- 
-    if (tymax < tmax) 
-        tmax = tymax; 
- 
-    float tzmin = (bb->min.z - ray->orig.z) / ray->dir.z; 
-    float tzmax = (bb->max.z - ray->orig.z) / ray->dir.z; 
- 
-    if (tzmin > tzmax) 
-        fswap(&tzmin, &tzmax); 
- 
-    if ((tmin > tzmax) || (tzmin > tmax)) 
-        return false; 
- 
-    if (tzmin > tmin) 
-        tmin = tzmin; 
- 
-    if (tzmax < tmax) 
-        tmax = tzmax; 
- 
-    return true; 
-}
-
-static bool scene_hit(const Ray3D* restrict ray, Hit3D* outHit, int* outID, float tMin, float tMax)
-{
-    Hit3D tmpHit;
-    float closest = tMax;
-    bool anything = false;
-
-    if (bounding_box_aabb(&boundingBox, ray)) {
-        Tri3D* tri = triangles.data;
-        for (unsigned int i = 0; i < triangles.size; i++) {
-            if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
-                closest = tmpHit.t;
-                *outHit = tmpHit;
-                *outID = *(int*)array_index(&trimaterials, i);
-                anything = true;
-            }
-        }
-    }
-
-    Sphere* sphere = spheres.data;
-    for (unsigned int i = 0; i < spheres.size; ++i) {
-        if (sphere_hit(*(sphere++), ray, &tmpHit) && tmpHit.t > tMin && tmpHit.t < closest) {
-            closest = tmpHit.t;
-            *outHit = tmpHit;
-            *outID = *(int*)array_index(&sphmaterials, i);
-            anything = true;
-        }
-    }
-    return anything;
-}
-
-static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray, Hit3D* rec, vec3* attenuation, Ray3D* scattered, vec3* outLightE, int* inoutRayCount)
+static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, const Ray3D* restrict ray, Hit3D* restrict rec, vec3* attenuation, Ray3D* restrict scattered, vec3* restrict outLightE)
 {
     *outLightE = vec3_uni(0.0f);
     vec3 P = _ray3D_at(ray, rec->t);
@@ -101,10 +18,10 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
         *attenuation = mat->albedo;
         
         // sample lights
-        if (!light_sampling) return true;
-        Sphere* s = spheres.data;
-        for (int i = 0; i < (int)spheres.size; ++i) {
-            Material* smat = array_index(&materials, i);
+        const Sphere* s = scene->spheres.data;
+        const size_t sphere_count = scene->spheres.size;
+        for (size_t i = 0; i < sphere_count; ++i) {
+            Material* smat = array_index(&scene->materials, i);
             if (smat->emissive.x <= 0.0 && smat->emissive.y <= 0.0 && smat->emissive.z <= 0.0) continue; // skip non-emissive
             if (mat == smat) continue; // skip self
             
@@ -124,12 +41,12 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
             
             // shoot shadow ray
             Hit3D lightHit;
-            int hitID;
+            size_t hitID;
             Ray3D r = {P, l};
-            (*inoutRayCount)++;
-            if (scene_hit(&r, &lightHit, &hitID, kMinT, kMaxT) && hitID == i) {
+
+            if (scene3D_hit(scene, &r, &lightHit, &hitID) && hitID == i) {
                 float omega = 2.0 * M_PI * (1.0 - cosAMax);
-                
+
                 vec3 nl = _vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : vec3_neg(rec->normal);
                 *outLightE = vec3_add(*outLightE, vec3_mult(vec3_prod(mat->albedo, smat->emissive), _maxf(0.0f, _vec3_dot(l, nl)) * omega / M_PI));
             }
@@ -176,21 +93,21 @@ static bool ray_scatter(const Material* restrict mat, const Ray3D* restrict ray,
     return true;
 }
 
-vec3 ray_trace(const Ray3D* restrict ray, int depth, int* inoutRayCount)
+vec3 ray3D_trace(const Scene3D* restrict scene, const Ray3D* restrict ray, const uint32_t depth)
 {
     Hit3D rec;
-    int id;
-    (*inoutRayCount)++;
-    if (scene_hit(ray, &rec, &id, kMinT, kMaxT)) {
+    size_t id;
+
+    if (scene3D_hit(scene, ray, &rec, &id)) {
         Ray3D scattered;
         vec3 attenuation, light;
-        Material* mat = (Material*)materials.data + id;
-        if (depth < kMaxDepth && ray_scatter(mat, ray, &rec, &attenuation, &scattered, &light, inoutRayCount)) {
-            return vec3_add(mat->emissive, vec3_add(light, vec3_prod(attenuation, ray_trace(&scattered, depth + 1, inoutRayCount))));
+        Material* mat = (Material*)scene->materials.data + id;
+        if (depth < TRACY_MAX_DEPTH && ray3D_scatter(scene, mat, ray, &rec, &attenuation, &scattered, &light)) {
+            return vec3_add(mat->emissive, vec3_add(light, vec3_prod(attenuation, ray3D_trace(scene, &scattered, depth + 1))));
         } else return mat->emissive;
     } else {
         // Sky
-        float t = clampf(ray->dir.y, 0.1, 1.0) * skyMult;
-        return vec3_mult(skyColor, t);
+        float t = clampf(ray->dir.y, 0.1, 1.0);
+        return vec3_mult(scene->background_color, t);
     }
 }

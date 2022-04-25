@@ -1,15 +1,15 @@
 #include <tracy.h>
 
-Cam3D camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect, float aperture, float focusDist)
+Cam3D cam3D_new(const vec3 lookFrom, const vec3 lookAt, const vec3 up, const float fov, const float aspect, const float aperture, const float focusDist)
 {
     Cam3D cam;
     cam.lensRadius = aperture * 0.5;
-    float theta = vfov * M_PI / 180.0;
+    float theta = fov * M_PI / 180.0;
     float halfHeight = tanf(theta * 0.5);
     float halfWidth = aspect * halfHeight;
     cam.origin = lookFrom;
     cam.w = vec3_normal(vec3_sub(lookFrom, lookAt));
-    cam.u = vec3_normal(vec3_cross(vup, cam.w));
+    cam.u = vec3_normal(vec3_cross(up, cam.w));
     cam.v = vec3_cross(cam.w, cam.u);
     cam.lowerLeftCorner = vec3_sub(cam.origin, vec3_add(vec3_add(vec3_mult(cam.u, halfWidth * focusDist), vec3_mult(cam.v, halfHeight * focusDist)), vec3_mult(cam.w, focusDist)));
     cam.horizontal = vec3_mult(cam.u, 2.0 * halfWidth * focusDist);
@@ -17,7 +17,7 @@ Cam3D camera_new(vec3 lookFrom, vec3 lookAt, vec3 vup, float vfov, float aspect,
     return cam;
 }
 
-Ray3D camera_ray(const Cam3D* restrict cam, float s, float t)
+Ray3D cam3D_ray(const Cam3D* restrict cam, const float s, const float t)
 {
     vec2 r = vec2_rand();
     vec3 rand = vec3_new(r.x, r.y, 0.0);
