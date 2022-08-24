@@ -30,12 +30,19 @@ typedef struct Material {
 } Material;
 
 typedef struct Cam3D {
-    vec3 origin;
+    struct CamParam3D {
+        vec3 lookFrom;
+        vec3 lookAt;
+        vec3 up;
+        float fov;
+        float aspect;
+        float aperture;
+        float focusDist;
+    } params;
     vec3 lowerLeftCorner;
     vec3 horizontal;
     vec3 vertical;
     vec3 u, v, w;
-    float lensRadius;
 } Cam3D;
 
 typedef struct Model3D {
@@ -65,7 +72,7 @@ typedef struct Render3D {
 
 /* configurations */
 
-//#define TRACY_PERF
+#define TRACY_PERF
 #define TRACY_MAX_DEPTH 10
 #define TRACY_MIN_DIST 0.001f
 #define TRACY_MAX_DIST 1.0e7f
@@ -91,6 +98,7 @@ void scene3D_free(Scene3D* free);
 
 Cam3D cam3D_new(const vec3 lookFrom, const vec3 lookAt, const vec3 up, const float fov, const float aspect, const float aperture, const float focusDist);
 Ray3D cam3D_ray(const Cam3D* cam, const float s, const float p);
+void cam3D_update(Cam3D* cam);
 
 vec3 ray3D_trace(const Scene3D* scene, const Ray3D* ray, const uint32_t depth);
 

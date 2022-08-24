@@ -294,17 +294,16 @@ bool scene3D_hit(const Scene3D* restrict scene, const Ray3D* restrict ray, Hit3D
         const Model3D** models = scene->models.data;
         for (size_t i = 0; i < model_count; ++i) {
             if (box3D_hit(&models[i]->bounds, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
-                /*const Tri3D* tri = models[i]->triangles.data;
+                const Tri3D* tri = models[i]->triangles.data;
                 const size_t triangle_count = models[i]->triangles.size;
                 for (size_t j = 0; j < triangle_count; j++) {
                    if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
-                       */
                         closest = tmpHit.t;
                         *outHit = tmpHit;
                         *outID = 0;
                         anything = true;
-                    /*}
-                }*/
+                    }
+                }
             }
         }
     }

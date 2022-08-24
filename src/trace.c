@@ -16,12 +16,13 @@ static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, co
         vec3 target = vec3_add(P, vec3_add(rec->normal, vec3_rand()));
         *scattered = ray3D_new(P, vec3_normal(vec3_sub(target, P)));
         *attenuation = mat->albedo;
-        
+
         // sample lights
         const Sphere* s = scene->spheres.data;
         const size_t sphere_count = scene->spheres.size;
-        for (size_t i = 0; i < sphere_count; ++i) {
-            Material* smat = array_index(&scene->materials, i);
+        for (size_t i = 0; i < sphere_count; ++i, ++s) {
+            size_t n = *(size_t*)array_index(&scene->sphere_materials, i);
+            Material* smat = array_index(&scene->materials, n);
             if (smat->emissive.x <= 0.0 && smat->emissive.y <= 0.0 && smat->emissive.z <= 0.0) continue; // skip non-emissive
             if (mat == smat) continue; // skip self
             
@@ -50,7 +51,6 @@ static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, co
                 vec3 nl = _vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : vec3_neg(rec->normal);
                 *outLightE = vec3_add(*outLightE, vec3_mult(vec3_prod(mat->albedo, smat->emissive), _maxf(0.0f, _vec3_dot(l, nl)) * omega / M_PI));
             }
-            s++;
         }
         return true;
     }

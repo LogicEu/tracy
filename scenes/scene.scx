@@ -16,6 +16,7 @@ focus 4.0
 sky {0.2, 0.2, 0.8}
 
 sphere 2 {1.0, 1.5, 2.0, 0.4}
-sphere 0 {0.0, -20.0, 0.0, 32.0}
-load assets/suzanne.obj # scale {1.0, 1.0, 1.0} # move {0.0, 1.0, 0.0} 
+sphere 1 {0.0, 0.0, 0.0, 1.0}
+sphere 0 {0.0, -33.0, 0.0, 32.0}
+#load assets/suzanne.obj # scale {1.0, 1.0, 1.0} # move {0.0, 1.0, 0.0} 
 

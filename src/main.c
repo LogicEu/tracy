@@ -7,6 +7,8 @@
 
 static const char* string_separator = "--------------------------------------------------------------------------------------------\n";
 static char* first_path = NULL;
+static bool to_mp4 = false;
+static int fps = 24;
 
 static int tracy_error(const char* restrict str)
 {
@@ -32,6 +34,9 @@ static int tracy_help()
     fprintf(stdout, "-spp <number>\t:Set the number of samples per pixel to calculate.\n");
     fprintf(stdout, "-h, -help\t:Print tracy's usage information.\n");
     fprintf(stdout, "-v, -version\t:Print tracy's version information.\n");
+    fprintf(stdout, "-open\t:Open first rendered image after done.\n");
+    fprintf(stdout, "-to-mp4\t:Join multiple frames into a video.\n");
+    fprintf(stdout, "-fps <number>\t:Set framerate of output video.\n");
     return EXIT_SUCCESS;
 }
 
@@ -69,7 +74,40 @@ static array_t tracy_load_scenes(const array_t* scene_files, const float aspect)
     return scenes;
 }
 
-static int tracy_render_scene(const Render3D* restrict render, const Scene3D* restrict scene, const char* restrict output_path)
+void scene3D_update(Scene3D* restrict scene)
+{
+    static float rot = 0.0;
+    rot += 0.2;
+
+    //scene->cam.params.lookFrom.x += 0.2f;
+    //cam3D_update(&scene->cam);
+
+    Model3D* model = scene->models.data;
+    const size_t size = model->triangles.size * 3;
+    vec3* p = model->triangles.data;
+    for (size_t i = 0; i < size; ++i, ++p) {
+        vec2 flat = vec2_rotate(vec2_new(p->x, p->z), rot);
+        p->x = flat.x;
+        p->z = flat.y;
+    }
+
+    model->bounds = box3D_from_mesh(model->triangles.data, size);
+}
+
+static void tracy_to_mp4(const char* path)
+{
+    char command[BUFSIZ];
+    sprintf(
+        command,
+        "pushd %s && ffmpeg -framerate 24 -pattern_type glob -i '*.png' -c:v libx264 -pix_fmt yuv420p %s.mp4 && popd", 
+        path, 
+        path
+    );
+
+    system(command);
+}
+
+static int tracy_render_scene(const Render3D* restrict render, Scene3D* restrict scene, const char* restrict output_path)
 {
     char image_name[BUFSIZ];
     char name[BUFSIZ], fmt[8];
@@ -108,16 +146,21 @@ static int tracy_render_scene(const Render3D* restrict render, const Scene3D* re
         mkdir(name, 0700);
     }
 
-    for (uint32_t i = 0; i < frames; i++) {
+    for (uint32_t i = 0; i < frames; ++i) {
         sprintf(image_name, "%s/%s%.03u%s", name, name, i + 1, fmt);
         
         bmp_t bmp = render3D_render(render, scene);
         bmp_write(image_name, &bmp);
         bmp_free(&bmp);
+        scene3D_update(scene);
 
         if (!first_path) {
             first_path = strdup(image_name);
         }
+    }
+
+    if (to_mp4) {
+        tracy_to_mp4(name);
     }
 
     return EXIT_SUCCESS;
@@ -205,8 +248,17 @@ int main(int argc, char** argv)
             }
             else return tracy_error("Missing input for option -o. See -h for more information.\n");
         }
+        else if (!strcmp(argv[i], "-fps")) {
+            if (++i < argc) {
+                fps = atoi(argv[i]);
+            }
+            else return tracy_error("Missing input for option -fps. See -h for more information.\n");
+        }
         else if (!strcmp(argv[i], "-open")) {
             open = true;
+        }
+        else if (!strcmp(argv[i], "-to-mp4")) {
+            to_mp4 = true;
         }
         else array_push(&scene_files, &argv[i]);
     }
@@ -218,8 +270,7 @@ int main(int argc, char** argv)
 
     array_t scenes = tracy_load_scenes(&scene_files, (float)render.width / (float)render.height);
     if (!scenes.size) {
-        tracy_error("No valid path to scene file was found.\n");
-        return EXIT_FAILURE;
+        return tracy_error("No valid path to scene file was found.\n");
     }
 
     render3D_set(&render);
