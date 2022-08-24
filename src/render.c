@@ -47,7 +47,7 @@ static void* render3D_render_job(void* arg)
 
     static const float animate_smoothing = 0.01f;
 
-    float* backbuffer = job.render->buffer + job.start * width * 3;
+    uint8_t* backbuffer = job.render->buffer + job.start * width * 4;
     const float invWidth = 1.0f / width;
     const float invHeight = 1.0f / height;
     float lerpFac = (float)job.render->frames / (float)(job.render->frames + 1);
@@ -66,12 +66,14 @@ static void* render3D_render_job(void* arg)
             col = vec3_mult(col, 1.0f / (float)spp);
             col = vec3_new(sqrtf(col.x), sqrtf(col.y), sqrtf(col.z));
             
-            vec3 prev = vec3_new(backbuffer[0], backbuffer[1], backbuffer[2]);
-            col = vec3_add(vec3_mult(prev, lerpFac), vec3_mult(col, (1.0f - lerpFac)));
-            backbuffer[0] = CLMPF(col.x);
-            backbuffer[1] = CLMPF(col.y);
-            backbuffer[2] = CLMPF(col.z);
-            backbuffer += 3;
+            //vec3 prev = vec3_new((float)backbuffer[0] / 255.0, (float)backbuffer[1] / 255.0, (float)backbuffer[2] / 255.0);
+            //col = vec3_add(vec3_mult(prev, lerpFac), vec3_mult(col, (1.0f - lerpFac)));
+            
+            backbuffer[0] = (unsigned)(CLMPF(col.x) * 255.0);
+            backbuffer[1] = (unsigned)(CLMPF(col.y) * 255.0);
+            backbuffer[2] = (unsigned)(CLMPF(col.z) * 255.0);
+            backbuffer[3] = 255;
+            backbuffer += 4;
 
 #ifdef TRACY_PERF
             
@@ -141,26 +143,24 @@ Render3D render3D_new(const uint32_t width, const uint32_t height, const uint32_
 
 void render3D_set(Render3D* render)
 {
-    render->buffer = calloc(render->width * render->height * 3, sizeof(float));
+    render->buffer = calloc(render->width * render->height * 4, sizeof(uint8_t));
 }
 
 void render3D_free(Render3D* render)
 {
-    if (!render) return;
-    free(render->buffer);
+    if (render && render->buffer) {
+        free(render->buffer);
+    }
 }
 
 bmp_t render3D_render(const Render3D* restrict render, const Scene3D* restrict scene)
-{
-    const size_t buff_len = render->width * render->height * 3;
-    
-    memset(render->buffer, 0, buff_len * sizeof(float));
+{   
     render3D_render_dispatch(render, scene);
-
-    bmp_t tmp = bmp_new(render->width, render->height, 3);
-    for (uint32_t j = 0; j < buff_len; j++) {
-        tmp.pixels[j] = (uint8_t)(render->buffer[j] * 255.0f);
-    }
+    
+    const size_t len = render->width * render->height * 4;
+    bmp_t tmp = bmp_new(render->width, render->height, 4);
+    memcpy(tmp.pixels, render->buffer, len);
+    
     bmp_t bmp = bmp_flip_vertical(&tmp);
     bmp_free(&tmp);
     
