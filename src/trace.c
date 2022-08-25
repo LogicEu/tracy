@@ -45,7 +45,7 @@ static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, co
             size_t hitID;
             Ray3D r = {P, l};
 
-            if (scene3D_hit(scene, &r, &lightHit, &hitID) && hitID == i) {
+            if (scene3D_hit(scene, &r, &lightHit, &hitID) && hitID == n) {
                 float omega = 2.0 * M_PI * (1.0 - cosAMax);
 
                 vec3 nl = _vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : vec3_neg(rec->normal);
