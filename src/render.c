@@ -45,14 +45,10 @@ static void* render3D_render_job(void* arg)
 
 #endif
 
-    static const float animate_smoothing = 0.01f;
-
     uint8_t* backbuffer = job.render->buffer + job.start * width * 4;
+    const float invSpp = 1.0f / (float)spp;
     const float invWidth = 1.0f / width;
     const float invHeight = 1.0f / height;
-    float lerpFac = (float)job.render->frames / (float)(job.render->frames + 1);
-    
-    lerpFac *= animate_smoothing;
 
     for (uint32_t y = job.start; y < job.end; ++y) {
         for (uint32_t x = 0; x < job.render->width; ++x) {
@@ -63,7 +59,7 @@ static void* render3D_render_job(void* arg)
                 Ray3D r = cam3D_ray(&job.scene->cam, u, v);
                 col = vec3_add(col, ray3D_trace(job.scene, &r, 0));
             }
-            col = vec3_mult(col, 1.0f / (float)spp);
+            col = vec3_mult(col, invSpp);
             col = vec3_new(sqrtf(col.x), sqrtf(col.y), sqrtf(col.z));
             
             //vec3 prev = vec3_new((float)backbuffer[0] / 255.0, (float)backbuffer[1] / 255.0, (float)backbuffer[2] / 255.0);

@@ -24,7 +24,7 @@ static int tracy_version()
 
 static int tracy_help()
 {
-    fprintf(stdout, "Options:\n");
+    fprintf(stdout, "tracy usage options:\n");
     fprintf(stdout, "<file_path>\t:Load scene file to render.\n");
     fprintf(stdout, "-o <file_path>\t:Set name of output file (*.png, *.jpg, *.ppm).\n");
     fprintf(stdout, "-w <number>\t:Set the width in pixels of output image.\n");
@@ -32,10 +32,10 @@ static int tracy_help()
     fprintf(stdout, "-j <number>\t:Set the number of threads to use.\n");
     fprintf(stdout, "-f <number>\t:Set the number of frames to output.\n");
     fprintf(stdout, "-spp <number>\t:Set the number of samples per pixel to calculate.\n");
-    fprintf(stdout, "-h, -help\t:Print tracy's usage information.\n");
+    fprintf(stdout, "-help\t\t:Print tracy's usage information.\n");
     fprintf(stdout, "-v, -version\t:Print tracy's version information.\n");
-    fprintf(stdout, "-open\t:Open first rendered image after done.\n");
-    fprintf(stdout, "-to-mp4\t:Join multiple frames into a video.\n");
+    fprintf(stdout, "-open\t\t:Open first rendered image after done.\n");
+    fprintf(stdout, "-to-mp4\t\t:Join multiple frames into a video.\n");
     fprintf(stdout, "-fps <number>\t:Set framerate of output video.\n");
     return EXIT_SUCCESS;
 }
@@ -188,7 +188,7 @@ int main(int argc, char** argv)
     bool open = false;
 
     for (int i = 1; i < argc; ++i) {
-        if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "-help")) {
+        if (!strcmp(argv[i], "-help")) {
             return tracy_help();
         }
         if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "-version")) {
@@ -202,7 +202,7 @@ int main(int argc, char** argv)
                 } 
                 else render.width = w;
             } 
-            else return tracy_error("Missing input for option -w. See -h for more information.\n");
+            else return tracy_error("Missing input for option -w. See -help for more information.\n");
         }
         else if (!strcmp(argv[i], "-h")) {
             if (++i < argc) {
@@ -212,7 +212,7 @@ int main(int argc, char** argv)
                 } 
                 else render.height = h;
             } 
-            else return tracy_error("Missing input for option -h. See -h for more information.\n");
+            else return tracy_error("Missing input for option -h. See -help for more information.\n");
         }
         else if (!strcmp(argv[i], "-j")) {
             if (++i < argc) {
@@ -222,7 +222,7 @@ int main(int argc, char** argv)
                 }
                 else render.threads = j;
             }
-            else return tracy_error("Missing input for option -j. See -h for more information.\n");
+            else return tracy_error("Missing input for option -j. See -help for more information.\n");
         }
         else if (!strcmp(argv[i], "-spp")) {
             if (++i < argc) {
@@ -231,7 +231,7 @@ int main(int argc, char** argv)
                     return tracy_error("-spp option cannot be smaller than 1.\n");
                 }
             }
-            else return tracy_error("Missing input for option -spp. See -h for more information.\n");
+            else return tracy_error("Missing input for option -spp. See -help for more information.\n");
         }
         else if (!strcmp(argv[i], "-f")) {
             if (++i < argc) {
@@ -240,19 +240,19 @@ int main(int argc, char** argv)
                     return tracy_error("-f option cannot be smaller than 1.\n");
                 }
             }
-            else return tracy_error("Missing input for option -f. See -h for more information.\n");
+            else return tracy_error("Missing input for option -f. See -help for more information.\n");
         }
         else if (!strcmp(argv[i], "-o")) {
             if (++i < argc) {
                 strcpy(output_path, argv[i]);
             }
-            else return tracy_error("Missing input for option -o. See -h for more information.\n");
+            else return tracy_error("Missing input for option -o. See -help for more information.\n");
         }
         else if (!strcmp(argv[i], "-fps")) {
             if (++i < argc) {
                 fps = atoi(argv[i]);
             }
-            else return tracy_error("Missing input for option -fps. See -h for more information.\n");
+            else return tracy_error("Missing input for option -fps. See -help for more information.\n");
         }
         else if (!strcmp(argv[i], "-open")) {
             open = true;
@@ -264,7 +264,7 @@ int main(int argc, char** argv)
     }
 
     if (!scene_files.size) {
-        tracy_error("Missing input scene file. See -h for more information.\n");
+        tracy_error("Missing input scene file. See -help for more information.\n");
         return EXIT_FAILURE;
     }
 
