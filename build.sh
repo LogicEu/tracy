@@ -24,8 +24,8 @@ lib=(
     -Llib
     -limgtool
     -lfract
-    -lutopia
     -lmass
+    -lutopia
     -lphoton
     -lz
     -lpng

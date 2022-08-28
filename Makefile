@@ -4,7 +4,7 @@ STD=-std=c99
 WFLAGS=-Wall -Wextra
 OPT=-O2
 IDIR=-I.
-LIBS=fract utopia photon mass imgtool
+LIBS=mass fract utopia photon imgtool
 CC=gcc
 NAME=tracy
 SRC=src/*.c

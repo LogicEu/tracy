@@ -38,7 +38,7 @@ static void* render3D_render_job(void* arg)
     bool check = first;
     first = false;
 
-    double time;
+    double time = 0.0;
     if (check) {
         time = time_clock();
     }

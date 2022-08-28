@@ -10,6 +10,14 @@ static char* first_path = NULL;
 static bool to_mp4 = false;
 static int fps = 24;
 
+static char* tstrdup(const char* str)
+{
+    const size_t size = strlen(str) + 1;
+    char* ret = malloc(size);
+    memcpy(ret, str, size);
+    return ret;
+}
+
 static int tracy_error(const char* restrict str)
 {
     fprintf(stderr, "%s", str);
@@ -90,7 +98,7 @@ static void tracy_to_mp4(const char* path)
 static int tracy_render_scene(const Render3D* restrict render, Scene3D* restrict scene, const char* restrict output_path)
 {
     char image_name[BUFSIZ];
-    char name[BUFSIZ], fmt[8];
+    char name[1024], fmt[8];
     strcpy(name, output_path);
     
     char* search = name;
@@ -115,7 +123,7 @@ static int tracy_render_scene(const Render3D* restrict render, Scene3D* restrict
         bmp_free(&bmp);
 
         if (!first_path) {
-            first_path = strdup(output_path);
+            first_path = tstrdup(output_path);
         }
 
         return EXIT_SUCCESS;
@@ -135,7 +143,7 @@ static int tracy_render_scene(const Render3D* restrict render, Scene3D* restrict
         //scene3D_update(scene);
 
         if (!first_path) {
-            first_path = strdup(image_name);
+            first_path = tstrdup(image_name);
         }
     }
 
