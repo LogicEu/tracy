@@ -73,7 +73,7 @@ typedef struct Render3D {
 /* configurations */
 
 #define TRACY_PERF
-#define TRACY_MAX_DEPTH 10
+#define TRACY_MAX_DEPTH 4
 #define TRACY_MIN_DIST 0.001f
 #define TRACY_MAX_DIST 1.0e7f
 
@@ -93,6 +93,7 @@ void model3D_scale(const Model3D* model, const float scale);
 void model3D_scale3D(const Model3D* model, const vec3 scale);
 
 Scene3D* scene3D_load(const char* filename, const float aspect);
+void scene3D_write(const char* filename, const Scene3D* scene);
 bool scene3D_hit(const Scene3D* scene, const Ray3D* ray, Hit3D* outHit, size_t* outID);
 void scene3D_free(Scene3D* free);
 

@@ -3,9 +3,9 @@
 
 static array_t tri3D_mesh_load(const char* path)
 {
-    mesh_t mesh = mesh_load(path);
+    Mesh3D mesh = mesh3D_load(path);
     array_t arr = array_move(&mesh.vertices);
-    mesh_free(&mesh);
+    mesh3D_free(&mesh);
     array_restructure(&arr, sizeof(Tri3D));
     return arr;
 }

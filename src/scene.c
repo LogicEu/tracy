@@ -36,7 +36,7 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
 {
     static const char* symbols = "\n ,:;[]{}()<>";
 
-    FILE* file = fopen(filename, "rb");
+    FILE* file = fopen(filename, "r");
     if (!file) {
         printf("Could not open file '%s'.\n", filename);
         return NULL;
@@ -283,6 +283,96 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
     return scene;
 }
 
+void scene3D_write(const char* filename, const Scene3D* scene)
+{
+    static const char* matname[4] = {
+        "undefined",
+        "lambert",
+        "metal",
+        "dielectric"
+    };
+
+    FILE* file = fopen(filename, "w");
+    if (!file) {
+        fprintf(stderr, "tracy error: Could not write file '%s'.\n", filename);
+        return;
+    }
+
+    fprintf(file, "# tracy 3D scene\n\n# camera:\n");
+    fprintf(file, "fov %f\n", scene->cam.params.fov);
+    fprintf(file, "focus %f\n", scene->cam.params.focusDist);
+    fprintf(file, "aperture %f\n\n", scene->cam.params.aperture);
+    fprintf(file, "up {%f, %f, %f}\n", scene->cam.params.up.x, scene->cam.params.up.y, scene->cam.params.up.z);
+    fprintf(file, "lookfrom {%f, %f, %f}\n", scene->cam.params.lookFrom.x, scene->cam.params.lookFrom.y, scene->cam.params.lookFrom.z);
+    fprintf(file, "lookat {%f, %f, %f}\n\n", scene->cam.params.lookAt.x, scene->cam.params.lookAt.y, scene->cam.params.lookAt.z);
+
+    fprintf(file, "# sky color\nsky {%f, %f, %f}\n", scene->background_color.x, scene->background_color.y, scene->background_color.z);
+
+    const size_t matsize = scene->materials.size;
+    if (matsize) {
+        fprintf(file, "# materials\n");
+        Material* mat = scene->materials.data;
+        for (size_t i = 0; i < matsize; ++i, ++mat) {
+            fprintf(
+                file, 
+                "material %s {{%f, %f, %f}, {%f, %f, %f}, %f, %f}\n",
+                matname[mat->type],
+                mat->albedo.x,
+                mat->albedo.y,
+                mat->albedo.z,
+                mat->emissive.x,
+                mat->emissive.y,
+                mat->emissive.z,
+                mat->roughness,
+                mat->ri
+            );
+        }
+    }
+
+    const size_t sphsize = scene->spheres.size;
+    if (sphsize) {
+        fprintf(file, "# spheres\n");
+        size_t* mat = scene->sphere_materials.data;
+        Sphere* s = scene->spheres.data;
+        for (size_t i = 0; i < sphsize; ++i, ++s, ++mat) {
+            fprintf(
+                file, 
+                "sphere %zu {%f, %f, %f, %f}\n",
+                *mat,
+                s->pos.x,
+                s->pos.y,
+                s->pos.z,
+                s->radius
+            );
+        }
+    }
+
+    const size_t trisize = scene->triangles.size;
+    if (trisize) {
+        fprintf(file, "# triangles\n");
+        size_t* mat = scene->triangle_materials.data;
+        Tri3D* t = scene->triangles.data;
+        for (size_t i = 0; i < trisize; ++i, ++t, ++mat) {
+            fprintf(
+                file, 
+                "triangle %zu {{%f, %f, %f}, {%f, %f, %f}, {%f, %f, %f}}\n",
+                *mat,
+                t->a.x,
+                t->a.y,
+                t->a.z,
+                t->b.x,
+                t->b.y,
+                t->b.z,
+                t->c.x,
+                t->c.y,
+                t->c.z
+            );
+        }
+    }
+
+    fclose(file);
+}
+
 bool scene3D_hit(const Scene3D* restrict scene, const Ray3D* restrict ray, Hit3D* restrict outHit, size_t* restrict outID)
 {
     Hit3D tmpHit;
@@ -290,47 +380,43 @@ bool scene3D_hit(const Scene3D* restrict scene, const Ray3D* restrict ray, Hit3D
     bool anything = false;
 
     const size_t model_count = scene->models.size;
-    if (model_count) {
-        const Model3D** models = scene->models.data;
-        for (size_t i = 0; i < model_count; ++i) {
-            if (box3D_hit(&models[i]->bounds, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
-                const Tri3D* tri = models[i]->triangles.data;
-                const size_t triangle_count = models[i]->triangles.size;
-                for (size_t j = 0; j < triangle_count; j++) {
-                   if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
-                        closest = tmpHit.t;
-                        *outHit = tmpHit;
-                        *outID = 0;
-                        anything = true;
-                    }
+    const Model3D** models = scene->models.data;
+    for (size_t i = 0; i < model_count; ++i) {
+        if (box3D_hit(&models[i]->bounds, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
+            const Tri3D* tri = models[i]->triangles.data;
+            const size_t triangle_count = models[i]->triangles.size;
+            for (size_t j = 0; j < triangle_count; j++) {
+                if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
+                    closest = tmpHit.t;
+                    *outHit = tmpHit;
+                    *outID = 0;
+                    anything = true;
                 }
             }
         }
     }
 
+    size_t* indices = scene->triangle_materials.data;
     const size_t triangle_count = scene->triangles.size;
-    if (triangle_count) {
-        const Tri3D* tri = scene->triangles.data;
-        for (size_t i = 0; i < triangle_count; i++) {
-            if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > TRACY_MAX_DEPTH && tmpHit.t < closest) {
-                closest = tmpHit.t;
-                *outHit = tmpHit;
-                *outID = *(size_t*)array_index(&scene->triangle_materials, i);
-                anything = true;
-            }
+    const Tri3D* tri = scene->triangles.data;
+    for (size_t i = 0; i < triangle_count; i++) {
+        if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > TRACY_MAX_DEPTH && tmpHit.t < closest) {
+            closest = tmpHit.t;
+            *outHit = tmpHit;
+            *outID =  indices[i];
+            anything = true;
         }
     }
 
+    indices = scene->sphere_materials.data;
     const size_t sphere_count = scene->spheres.size;
-    if (sphere_count) {
-        const Sphere* sphere = scene->spheres.data;
-        for (size_t i = 0; i < sphere_count; ++i) {
-            if (sphere_hit(*(sphere++), ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
-                closest = tmpHit.t;
-                *outHit = tmpHit;
-                *outID = *(size_t*)array_index(&scene->sphere_materials, i);
-                anything = true;
-            }
+    const Sphere* spheres = scene->spheres.data;
+    for (size_t i = 0; i < sphere_count; ++i) {
+        if (sphere_hit(spheres[i], ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
+            closest = tmpHit.t;
+            *outHit = tmpHit;
+            *outID = indices[i];
+            anything = true;
         }
     }
 

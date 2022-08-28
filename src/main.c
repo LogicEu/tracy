@@ -74,26 +74,6 @@ static array_t tracy_load_scenes(const array_t* scene_files, const float aspect)
     return scenes;
 }
 
-void scene3D_update(Scene3D* restrict scene)
-{
-    static float rot = 0.0;
-    rot += 0.2;
-
-    //scene->cam.params.lookFrom.x += 0.2f;
-    //cam3D_update(&scene->cam);
-
-    Model3D* model = scene->models.data;
-    const size_t size = model->triangles.size * 3;
-    vec3* p = model->triangles.data;
-    for (size_t i = 0; i < size; ++i, ++p) {
-        vec2 flat = vec2_rotate(vec2_new(p->x, p->z), rot);
-        p->x = flat.x;
-        p->z = flat.y;
-    }
-
-    model->bounds = box3D_from_mesh(model->triangles.data, size);
-}
-
 static void tracy_to_mp4(const char* path)
 {
     char command[BUFSIZ];
@@ -152,7 +132,7 @@ static int tracy_render_scene(const Render3D* restrict render, Scene3D* restrict
         bmp_t bmp = render3D_render(render, scene);
         bmp_write(image_name, &bmp);
         bmp_free(&bmp);
-        scene3D_update(scene);
+        //scene3D_update(scene);
 
         if (!first_path) {
             first_path = strdup(image_name);

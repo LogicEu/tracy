@@ -60,7 +60,7 @@ static void* render3D_render_job(void* arg)
                 col = vec3_add(col, ray3D_trace(job.scene, &r, 0));
             }
             col = vec3_mult(col, invSpp);
-            col = vec3_new(sqrtf(col.x), sqrtf(col.y), sqrtf(col.z));
+            col = _vec3_new(sqrtf(col.x), sqrtf(col.y), sqrtf(col.z));
             
             //vec3 prev = vec3_new((float)backbuffer[0] / 255.0, (float)backbuffer[1] / 255.0, (float)backbuffer[2] / 255.0);
             //col = vec3_add(vec3_mult(prev, lerpFac), vec3_mult(col, (1.0f - lerpFac)));
