@@ -13,3 +13,6 @@
 [submodule "photon"]
 	path = photon
 	url = git@github.com:LogicEu/photon.git
+[submodule "spxe"]
+	path = spxe
+	url = git@github.com:LogicEu/spxe.git

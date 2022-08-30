@@ -67,13 +67,18 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
                 fclose(file);
                 return NULL;
             }
-            
+
             Model3D* model = model3D_load(token);
             if (!model) {
                 continue;
             }
 
-            while ((token = strtok(NULL, symbols))) {
+            token += strlen(token) + 1;
+            fprintf(stdout, "'%s'\n", token);
+            token = strtok(token, symbols);
+
+            while (token) {
+                fprintf(stdout, "%s\n", token);
                 if (!strcmp(token, "#")) {
                     break;
                 }
@@ -105,9 +110,12 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
                 if (!token) {
                     break;
                 }
+
+                token = strtok(NULL, symbols);
             }
-            
-            model->bounds = box3D_from_mesh(model->triangles.data, model->triangles.size * 3);
+
+            oct3D_free(&model->octree);
+            model->octree = oct3D_from_mesh(model->triangles.data, model->triangles.size);
             array_push(&scene->models, &model);
 
         }
@@ -299,12 +307,12 @@ void scene3D_write(const char* filename, const Scene3D* scene)
     }
 
     fprintf(file, "# tracy 3D scene\n\n# camera:\n");
-    fprintf(file, "fov %f\n", scene->cam.params.fov);
-    fprintf(file, "focus %f\n", scene->cam.params.focusDist);
-    fprintf(file, "aperture %f\n\n", scene->cam.params.aperture);
-    fprintf(file, "up {%f, %f, %f}\n", scene->cam.params.up.x, scene->cam.params.up.y, scene->cam.params.up.z);
-    fprintf(file, "lookfrom {%f, %f, %f}\n", scene->cam.params.lookFrom.x, scene->cam.params.lookFrom.y, scene->cam.params.lookFrom.z);
-    fprintf(file, "lookat {%f, %f, %f}\n\n", scene->cam.params.lookAt.x, scene->cam.params.lookAt.y, scene->cam.params.lookAt.z);
+    fprintf(file, "fov %f\n", scene->cam.fov);
+    fprintf(file, "focus %f\n", scene->cam.focusDist);
+    fprintf(file, "aperture %f\n\n", scene->cam.aperture);
+    fprintf(file, "up {%f, %f, %f}\n", scene->cam.up.x, scene->cam.up.y, scene->cam.up.z);
+    fprintf(file, "lookfrom {%f, %f, %f}\n", scene->cam.lookFrom.x, scene->cam.lookFrom.y, scene->cam.lookFrom.z);
+    fprintf(file, "lookat {%f, %f, %f}\n\n", scene->cam.lookAt.x, scene->cam.lookAt.y, scene->cam.lookAt.z);
 
     fprintf(file, "# sky color\nsky {%f, %f, %f}\n", scene->background_color.x, scene->background_color.y, scene->background_color.z);
 
@@ -382,17 +390,11 @@ bool scene3D_hit(const Scene3D* restrict scene, const Ray3D* restrict ray, Hit3D
     const size_t model_count = scene->models.size;
     const Model3D** models = scene->models.data;
     for (size_t i = 0; i < model_count; ++i) {
-        if (box3D_hit(&models[i]->bounds, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
-            const Tri3D* tri = models[i]->triangles.data;
-            const size_t triangle_count = models[i]->triangles.size;
-            for (size_t j = 0; j < triangle_count; j++) {
-                if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
-                    closest = tmpHit.t;
-                    *outHit = tmpHit;
-                    *outID = 0;
-                    anything = true;
-                }
-            }
+        if (oct3D_hit(&models[i]->octree, ray, &tmpHit, closest)) {
+            closest = tmpHit.t;
+            *outHit = tmpHit;
+            *outID = 0;
+            anything = true;
         }
     }
 
@@ -400,7 +402,7 @@ bool scene3D_hit(const Scene3D* restrict scene, const Ray3D* restrict ray, Hit3D
     const size_t triangle_count = scene->triangles.size;
     const Tri3D* tri = scene->triangles.data;
     for (size_t i = 0; i < triangle_count; i++) {
-        if (tri3D_hit(tri++, ray, &tmpHit) && tmpHit.t > TRACY_MAX_DEPTH && tmpHit.t < closest) {
+        if (tri3D_hit_fast(tri++, ray, &tmpHit, closest)) {
             closest = tmpHit.t;
             *outHit = tmpHit;
             *outID =  indices[i];

@@ -19,7 +19,7 @@ Model3D* model3D_load(const char* filename)
 
     Model3D* model = malloc(sizeof(Model3D));
     model->triangles = mesh;
-    model->bounds = box3D_from_mesh(mesh.data, mesh.size * 3);
+    model->octree = oct3D_from_mesh(mesh.data, mesh.size);
 
     return model;
 }
@@ -54,5 +54,6 @@ void model3D_free(Model3D* model)
 {
     if (!model) return;
     array_free(&model->triangles);
+    oct3D_free(&model->octree);
     free(model);
 }

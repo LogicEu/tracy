@@ -16,6 +16,16 @@ tracy path tracer
 #include <photon/photon.h>
 #include <imgtool/imgtool.h>
 
+/* tracy's configurations */
+
+//#define TRACY_PERF
+#define TRACY_MAX_DEPTH 4
+#define TRACY_MIN_DIST 0.001f
+#define TRACY_MAX_DIST 1.0e7f
+#define TRACY_OCTREE_LIMIT 8
+
+/* tracy's structs */
+
 typedef struct Material {
     enum MatType {
         Invisible,
@@ -31,23 +41,29 @@ typedef struct Material {
 
 typedef struct Cam3D {
     struct CamParam3D {
-        vec3 lookFrom;
-        vec3 lookAt;
-        vec3 up;
-        float fov;
-        float aspect;
-        float aperture;
-        float focusDist;
+        vec3 lowerLeftCorner;
+        vec3 horizontal;
+        vec3 vertical;
+        vec3 u, v, w;
     } params;
-    vec3 lowerLeftCorner;
-    vec3 horizontal;
-    vec3 vertical;
-    vec3 u, v, w;
+    vec3 lookFrom;
+    vec3 lookAt;
+    vec3 up;
+    float fov;
+    float aspect;
+    float aperture;
+    float focusDist;
 } Cam3D;
+
+typedef struct Oct3D {
+    Box3D box;
+    struct Oct3D* children;
+    array_t triangles;
+} Oct3D;
 
 typedef struct Model3D {
     array_t triangles;
-    Box3D bounds;
+    Oct3D octree;
 } Model3D;
 
 typedef struct Scene3D {
@@ -68,21 +84,16 @@ typedef struct Render3D {
     uint32_t spp;
     uint32_t frames;
     uint32_t threads;
+    uint32_t timer;
 } Render3D;
 
-/* configurations */
-
-#define TRACY_PERF
-#define TRACY_MAX_DEPTH 4
-#define TRACY_MIN_DIST 0.001f
-#define TRACY_MAX_DIST 1.0e7f
-
-/* API */
+/* tracy's API */
 
 double time_clock();
 
 Render3D render3D_new(const uint32_t width, const uint32_t height, const uint32_t spp);
-bmp_t render3D_render(const Render3D* render, const Scene3D* scene);
+bmp_t render3D_bmp(const Render3D* render, const Scene3D* scene);
+void render3D_render(const Render3D* render, const Scene3D* scene);
 void render3D_set(Render3D* render);
 void render3D_free(Render3D* render);
 
@@ -102,6 +113,17 @@ Ray3D cam3D_ray(const Cam3D* cam, const float s, const float p);
 void cam3D_update(Cam3D* cam);
 
 vec3 ray3D_trace(const Scene3D* scene, const Ray3D* ray, const uint32_t depth);
+
+Oct3D oct3D_create(const Box3D box);
+Oct3D oct3D_from_mesh(const Tri3D* triangles, const size_t count);
+bool oct3D_hit(const Oct3D* oct, const Ray3D* ray, Hit3D* hit, float closest);
+void oct3D_free(Oct3D* oct);
+
+int tracy_error(const char* str);
+int tracy_version(void);
+int tracy_help(const int runtime);
+int tracy_log_render3D(const Render3D* render);
+int tracy_log_time(const float time);
 
 #ifdef __cplusplus
 }

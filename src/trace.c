@@ -44,7 +44,7 @@ static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, co
             float eps1 = randf_norm(), eps2 = randf_norm();
             float cosA = 1.0f - eps1 + eps1 * cosAMax;
             float sinA = sqrtf(1.0f - cosA * cosA);
-            float phi = 2 * M_PI * eps2;
+            float phi = 2.0 * M_PI * eps2;
             vec3 l = vec3_add(_vec3_mult(su, cosf(phi) * sinA), vec3_add(_vec3_mult(sv, sin(phi) * sinA), _vec3_mult(sw, cosA)));
             l = vec3_normal(l);
             

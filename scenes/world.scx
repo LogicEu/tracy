@@ -1,0 +1,31 @@
+# this is a sample scene
+
+material metal {{1.0, 1.0, 1.0}, {0.0, 0.0, 0.0}, 0.0, 0.0} # mirror
+material metal {{1.0, 1.0, 1.0}, {0.0, 0.0, 0.0}, 0.5, 0.0} # metal
+material lambert {{0.6, 0.6, 0.6}, {0.0, 0.0, 0.0}, 0.0, 0.0} # grey
+material lambert {{0.8, 0.2, 0.2}, {88.0, 20.0, 20.0}, 0.0, 0.0} # red light
+material lambert {{0.2, 0.2, 0.8}, {20.0, 20.0, 88.0}, 0.0, 0.0} # blue light
+material lambert {{0.2, 0.8, 0.2}, {20.0, 88.0, 20.0}, 0.0, 0.0} # green light
+material dielectric {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, 0.0, 2.0} # dielectric
+
+lookfrom 0.0 2.0 4.0
+lookat 0.0, 0.0, 0.0
+up 0.0, 1.0, 0.0
+
+fov 45.0
+aperture 0.1
+focus 4.0
+
+sky {0.2, 0.2, 0.6}
+
+sphere 2 {0.0, -101.0, 0.0, 100.0} # big grey sphere
+sphere 0 {0.0, 3.0, -5.0, 4.0}
+sphere 1 {0.0, 0.0, 0.0, 1.0} # mirro
+sphere 3 {12.0, 12.0, 12.0, 0.5} # red light
+sphere 4 {4.0, 6.0, 4.0, 0.5} # blue light
+#sphere 4 {0.0, 3.0, 4.0, 0.5}
+#sphere 1 {2.0, 0.0, 0.0, 1.0}
+sphere 6 {4.0, 1.0, 4.0, 1.0}
+
+t 0 {20.0, 00.0, 20.0}, {-20.0, 0.0, 20.0} {8.0, 20.0, 8.0}
+

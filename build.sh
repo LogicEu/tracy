@@ -3,6 +3,8 @@
 name=tracy
 cc=gcc
 src=src/*.c
+cli=main_cli.c
+run=main_run.c
 
 flags=(
     -Wall
@@ -18,6 +20,7 @@ inc=(
     -Iutopia
     -Imass
     -Iphoton
+    -Ispxe
 )
 
 lib=(
@@ -38,6 +41,21 @@ linux=(
     -D_POSIX_C_SOURCE=199309L
 )
 
+glmac=(
+    -lglfw
+    -framework OpenGL
+)
+
+gllin=(
+    -lglfw
+    -lGL
+    -lGLEW
+)
+
+exe() {
+    echo "$@" && $@
+}
+
 lib_build() {
     pushd $1/ && ./build.sh $2 && mv *.a ../lib/ && popd
 }
@@ -52,11 +70,21 @@ build() {
     lib_build photon static
 }
 
-comp() {
+run() {
     if echo "$OSTYPE" | grep -q "darwin"; then
-        $cc $src -o $name $std ${flags[*]} ${inc[*]} ${lib[*]}
+        exe $cc $src $run -o $name ${flags[*]} ${inc[*]} ${lib[*]} ${glmac[*]}
     elif echo "$OSTYPE" | grep -q "linux"; then
-        $cc $src -o $name $std ${flags[*]} ${inc[*]} ${lib[*]} ${linux[*]}
+        exe $cc $src $run -o $name ${flags[*]} ${inc[*]} ${lib[*]} ${linux[*]} ${gllin[*]}
+    else
+        echo "This OS not supported yet" && exit
+    fi
+}
+
+cli() {
+    if echo "$OSTYPE" | grep -q "darwin"; then
+        exe $cc $src $cli -o $name ${flags[*]} ${inc[*]} ${lib[*]}
+    elif echo "$OSTYPE" | grep -q "linux"; then
+        exe $cc $src $cli -o $name ${flags[*]} ${inc[*]} ${lib[*]} ${linux[*]}
     else
         echo "This OS not supported yet" && exit
     fi
@@ -98,18 +126,20 @@ uninstall() {
 case "$1" in
     "build")
         build;;
-    "comp")
-        comp;;
+    "cli")
+        cli;;
+    "run")
+        run;;
     "clean")
         clean;;
     "all")
-        build && comp;;
+        build && cli;;
     "install")
         install;;
     "uninstall")
         uninstall;;
     *)
-        echo "Run with 'build', 'comp' or 'all' to build."
+        echo "Run with 'build', 'cli' or 'run' to build."
         echo "Use 'install' to build and install in /usr/local"
         echo "Use 'clean' to remove local builds.";;
 esac

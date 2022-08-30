@@ -5,7 +5,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-static const char* string_separator = "--------------------------------------------------------------------------------------------\n";
 static char* first_path = NULL;
 static bool to_mp4 = false;
 static int fps = 24;
@@ -16,54 +15,6 @@ static char* tstrdup(const char* str)
     char* ret = malloc(size);
     memcpy(ret, str, size);
     return ret;
-}
-
-static int tracy_error(const char* restrict str)
-{
-    fprintf(stderr, "%s", str);
-    return EXIT_FAILURE;
-}
-
-static int tracy_version()
-{
-    fprintf(stdout, "tracy - the tiny path tracer - version 0.1.0.\n");
-    return EXIT_SUCCESS;
-}
-
-static int tracy_help()
-{
-    fprintf(stdout, "tracy usage options:\n");
-    fprintf(stdout, "<file_path>\t:Load scene file to render.\n");
-    fprintf(stdout, "-o <file_path>\t:Set name of output file (*.png, *.jpg, *.ppm).\n");
-    fprintf(stdout, "-w <number>\t:Set the width in pixels of output image.\n");
-    fprintf(stdout, "-h <number>\t:Set the height in pixels of output image.\n");
-    fprintf(stdout, "-j <number>\t:Set the number of threads to use.\n");
-    fprintf(stdout, "-f <number>\t:Set the number of frames to output.\n");
-    fprintf(stdout, "-spp <number>\t:Set the number of samples per pixel to calculate.\n");
-    fprintf(stdout, "-help\t\t:Print tracy's usage information.\n");
-    fprintf(stdout, "-v, -version\t:Print tracy's version information.\n");
-    fprintf(stdout, "-open\t\t:Open first rendered image after done.\n");
-    fprintf(stdout, "-to-mp4\t\t:Join multiple frames into a video.\n");
-    fprintf(stdout, "-fps <number>\t:Set framerate of output video.\n");
-    return EXIT_SUCCESS;
-}
-
-static int tracy_log_render(const Render3D* render)
-{
-    fprintf(stdout, "tracy is ready!\n");
-    fprintf(stdout, "threads:\t%d\nframes:\t\t%d\nwidth:\t\t%d\nheight:\t\t%d\nsamples:\t%d\n", render->threads, render->frames, render->width, render->height, render->spp);
-    fprintf(stdout, "rendering the scene...\n%s", string_separator);
-    fprintf(stdout, "frames\tNº\t%%\t(px\t/ of\t)\telapsed\t\testimate\tremaining\n%s", string_separator);
-    return EXIT_SUCCESS;
-}
-
-static int tracy_log_time(const float time)
-{
-    const uint32_t minutes = (uint32_t)(time / 60.0);
-    fprintf(stdout, "%s", string_separator);
-    fprintf(stdout, "total\t\t\t\t\t\t%.03fs\t%um\t%f\n", time, minutes, time - 60.0 * minutes);
-    fprintf(stdout, "%s", string_separator);
-    return EXIT_SUCCESS;
 }
 
 static array_t tracy_load_scenes(const array_t* scene_files, const float aspect)
@@ -95,7 +46,7 @@ static void tracy_to_mp4(const char* path)
     system(command);
 }
 
-static int tracy_render_scene(const Render3D* restrict render, Scene3D* restrict scene, const char* restrict output_path)
+static int tracy_render_scene(Render3D* restrict render, Scene3D* restrict scene, const char* restrict output_path)
 {
     char image_name[BUFSIZ];
     char name[1024], fmt[8];
@@ -118,7 +69,7 @@ static int tracy_render_scene(const Render3D* restrict render, Scene3D* restrict
     const uint32_t frames = render->frames;
     if (frames == 1) {
         
-        bmp_t bmp = render3D_render(render, scene);
+        bmp_t bmp = render3D_bmp(render, scene);
         bmp_write(output_path, &bmp);
         bmp_free(&bmp);
 
@@ -137,10 +88,12 @@ static int tracy_render_scene(const Render3D* restrict render, Scene3D* restrict
     for (uint32_t i = 0; i < frames; ++i) {
         sprintf(image_name, "%s/%s%.03u%s", name, name, i + 1, fmt);
         
-        bmp_t bmp = render3D_render(render, scene);
+        bmp_t bmp = render3D_bmp(render, scene);
         bmp_write(image_name, &bmp);
         bmp_free(&bmp);
         //scene3D_update(scene);
+
+        ++render->timer;
 
         if (!first_path) {
             first_path = tstrdup(image_name);
@@ -177,7 +130,7 @@ int main(int argc, char** argv)
 
     for (int i = 1; i < argc; ++i) {
         if (!strcmp(argv[i], "-help")) {
-            return tracy_help();
+            return tracy_help(0);
         }
         if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "-version")) {
             return tracy_version();
@@ -262,8 +215,10 @@ int main(int argc, char** argv)
     }
 
     render3D_set(&render);
-    tracy_log_render(&render);
+    tracy_log_render3D(&render);
+#ifdef TRACY_PERF
     double time = time_clock();
+#endif
 
     Scene3D** s = scenes.data;
     const size_t scene_count = scenes.size;
@@ -273,7 +228,9 @@ int main(int argc, char** argv)
         }
     }
     
+#ifdef TRACY_PERF
     tracy_log_time(time_clock() - time);
+#endif
 
     for (size_t i = 0; i < scene_count; ++i) {
         scene3D_free(s[i]);
