@@ -18,7 +18,7 @@ tracy path tracer
 
 /* tracy's configurations */
 
-//#define TRACY_PERF
+#define TRACY_PERF
 #define TRACY_MAX_DEPTH 4
 #define TRACY_MIN_DIST 0.001f
 #define TRACY_MAX_DIST 1.0e7f

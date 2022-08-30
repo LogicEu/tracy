@@ -73,12 +73,10 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
                 continue;
             }
 
-            token += strlen(token) + 1;
-            fprintf(stdout, "'%s'\n", token);
-            token = strtok(token, symbols);
+            token = strtok(token + strlen(token) + 1, symbols);
 
             while (token) {
-                fprintf(stdout, "%s\n", token);
+
                 if (!strcmp(token, "#")) {
                     break;
                 }
