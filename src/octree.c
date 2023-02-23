@@ -3,7 +3,7 @@
 
 static void oct3D_insert(Oct3D* oct, const Tri3D* triangle);
 
-static Oct3D* oct3D_children(const Box3D* box)
+static Oct3D* oct3D_children_create(const Box3D* box)
 {
     static const vec3 offsets[8] = {
         {0.0, 0.0, 0.0},
@@ -52,22 +52,23 @@ static bool oct3D_children_insert(Oct3D* oct, const Tri3D* triangle)
 static void oct3D_insert(Oct3D* oct, const Tri3D* triangle)
 {
     if (oct->triangles.size < TRACY_OCTREE_LIMIT) {
-        return array_push(&oct->triangles, triangle);
+        vector_push(&oct->triangles, triangle);
+        return;
     }
     
     if (!oct->children) {
-        oct->children = oct3D_children(&oct->box);
+        oct->children = oct3D_children_create(&oct->box);
         const Tri3D* t = oct->triangles.data;
         for (size_t i = 0; i < oct->triangles.size; ++i, ++t) {
             if (oct3D_children_insert(oct, t)) {
-                array_remove(&oct->triangles, i);
+                vector_remove(&oct->triangles, i);
                 --i, --t;
             }
         }
     }
 
     if (!oct3D_children_insert(oct, triangle)) {
-        array_push(&oct->triangles, triangle);
+        vector_push(&oct->triangles, triangle);
     }
 }
 
@@ -76,7 +77,7 @@ Oct3D oct3D_create(const Box3D box)
     Oct3D oct;
     oct.box = box;
     oct.children = NULL;
-    oct.triangles = array_create(sizeof(Tri3D));
+    oct.triangles = vector_create(sizeof(Tri3D));
     return oct;
 }
 
@@ -116,11 +117,6 @@ bool oct3D_hit(const Oct3D* oct, const Ray3D* ray, Hit3D* hit, float closest)
                 }
             }
         }
-        /*else if (oct->triangles.size && box3D_hit(&oct->box, ray, &tmpHit) && tmpHit.t > TRACY_MIN_DIST && tmpHit.t < closest) {
-            closest = tmpHit.t;
-            *hit = tmpHit;
-            anything = true;
-        }*/
     }
 
     return anything;
@@ -134,5 +130,5 @@ void oct3D_free(Oct3D* oct)
         }
         free(oct->children);
     }
-    array_free(&oct->triangles);
+    vector_free(&oct->triangles);
 }

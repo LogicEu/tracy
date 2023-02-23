@@ -1,14 +1,16 @@
 #!/bin/bash
 
 name=tracy
+
 cc=gcc
 src=src/*.c
-cli=main_cli.c
-run=main_run.c
+cli=cli.c
+rt=rt.c
 
 flags=(
     -Wall
     -Wextra
+    -pedantic
     -O2
     -std=c99
 )
@@ -35,34 +37,38 @@ lib=(
     -ljpeg
 )
 
-linux=(
-    -lm
-    -lpthread
-    -D_POSIX_C_SOURCE=199309L
-)
-
-glmac=(
+opngl=(
     -lglfw
-    -framework OpenGL
 )
 
-gllin=(
-    -lglfw
-    -lGL
-    -lGLEW
-)
+if echo "$OSTYPE" | grep -q "darwin"; then
+    opngl+=(
+        -framework OpenGL
+    )
+elif echo "$OSTYPE" | grep -q "linux"; then
+    opngl+=(
+        -lGL
+        -lGLEW
+    )
+    lib+=(
+        -lm
+        -lpthread
+        -D_POSIX_C_SOURCE=199309L
+    )
+else
+    echo "This OS is not supported by this shell script yet..." && exit
+fi
 
-exe() {
+cmd() {
     echo "$@" && $@
 }
 
 lib_build() {
-    pushd $1/ && ./build.sh $2 && mv *.a ../lib/ && popd
+    cmd pushd $1/ && ./build.sh $2 && cmd mv bin/*.a ../lib/ && cmd popd
 }
 
 build() {
-    [ ! -d lib ] && mkdir lib && echo "mkdir lib"
-    
+    cmd mkdir -p lib/
     lib_build utopia static
     lib_build fract static
     lib_build imgtool static
@@ -70,56 +76,44 @@ build() {
     lib_build photon static
 }
 
-run() {
-    if echo "$OSTYPE" | grep -q "darwin"; then
-        exe $cc $src $run -o $name ${flags[*]} ${inc[*]} ${lib[*]} ${glmac[*]}
-    elif echo "$OSTYPE" | grep -q "linux"; then
-        exe $cc $src $run -o $name ${flags[*]} ${inc[*]} ${lib[*]} ${linux[*]} ${gllin[*]}
-    else
-        echo "This OS not supported yet" && exit
-    fi
+objs() {
+    [ ! -d lib/ ] && build
+    cmd mkdir -p tmp/
+    cmd $cc -c $src ${flags[*]} ${inc[*]} && cmd mv *.o tmp/
 }
 
-cli() {
-    if echo "$OSTYPE" | grep -q "darwin"; then
-        exe $cc $src $cli -o $name ${flags[*]} ${inc[*]} ${lib[*]}
-    elif echo "$OSTYPE" | grep -q "linux"; then
-        exe $cc $src $cli -o $name ${flags[*]} ${inc[*]} ${lib[*]} ${linux[*]}
-    else
-        echo "This OS not supported yet" && exit
-    fi
+crt() {
+    objs && cmd $cc tmp/*.o $rt -o $name ${flags[*]} ${lib[*]} ${inc[*]} ${opngl[*]}
+}
+
+ccli() {
+    objs && cmd $cc tmp/*.o $cli -o tracy_cli ${flags[*]} ${inc[*]} ${lib[*]}
 }
 
 cleanf() {
-    [ -f $1 ] && rm $1 && echo "deleted $1"
+    [ -f $1 ] && cmd rm $1
 }
 
 cleand() {
-    [ -d $1 ] && rm -r $1 && echo "deleted $1"
+    [ -d $1 ] && cmd rm -r $1
+}
+
+cleanr() {
+    cleand $1/tmp/
+    cleand $1/bin/
 }
 
 clean() {
+    cleanr imgtool
+    cleanr utopia
+    cleanr fract
+    cleanr photon
+    cleanr mass
+
     cleand lib
+    cleand tmp
     cleanf $name
-    return 0
-}
-
-install() {
-    [ "$EUID" -ne 0 ] && echo "Run with sudo to install" && exit
-
-    build && comp
-    [ -f $name ] && mv $name /usr/local/bin/
-
-    echo "Successfully installed $name"
-    return 0
-}
-
-uninstall() {
-    [ "$EUID" -ne 0 ] && echo "Run with sudo to uninstall" && exit
-
-    cleanf /usr/local/bin/$name
-
-    echo "Successfully uninstalled $name"
+    cleanf tracy_cli
     return 0
 }
 
@@ -127,19 +121,14 @@ case "$1" in
     "build")
         build;;
     "cli")
-        cli;;
-    "run")
-        run;;
+        ccli;;
+    "rt")
+        crt;;
+    "all")
+        crt && ccli;;
     "clean")
         clean;;
-    "all")
-        build && cli;;
-    "install")
-        install;;
-    "uninstall")
-        uninstall;;
     *)
-        echo "Run with 'build', 'cli' or 'run' to build."
-        echo "Use 'install' to build and install in /usr/local"
+        echo "Run with 'cli' or 'rt' to compile runtime or client executables"
         echo "Use 'clean' to remove local builds.";;
 esac

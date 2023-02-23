@@ -17,16 +17,16 @@ static char* tstrdup(const char* str)
     return ret;
 }
 
-static array_t tracy_load_scenes(const array_t* scene_files, const float aspect)
+static struct vector tracy_load_scenes(const struct vector* scene_files, const float aspect)
 {
-    array_t scenes = array_create(sizeof(Scene3D*));
+    struct vector scenes = vector_create(sizeof(Scene3D*));
 
     char** filenames = scene_files->data;
     const size_t count = scene_files->size;
     for (size_t i = 0; i < count; ++i) {
         Scene3D* scene = scene3D_load(filenames[i], aspect);
         if (scene) {
-            array_push(&scenes, &scene);
+            vector_push(&scenes, &scene);
         }
     }
 
@@ -123,7 +123,7 @@ static void tracy_open_image(const char* path)
 
 int main(int argc, char** argv) 
 {   
-    array_t scene_files = array_create(sizeof(char*));
+    struct vector scene_files = vector_create(sizeof(char*));
     Render3D render = render3D_new(400, 400, 4);
     char output_path[BUFSIZ] = "image.png";
     bool open = false;
@@ -201,7 +201,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i], "-to-mp4")) {
             to_mp4 = true;
         }
-        else array_push(&scene_files, &argv[i]);
+        else vector_push(&scene_files, &argv[i]);
     }
 
     if (!scene_files.size) {
@@ -209,7 +209,7 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    array_t scenes = tracy_load_scenes(&scene_files, (float)render.width / (float)render.height);
+    struct vector scenes = tracy_load_scenes(&scene_files, (float)render.width / (float)render.height);
     if (!scenes.size) {
         return tracy_error("No valid path to scene file was found.\n");
     }
@@ -237,8 +237,8 @@ int main(int argc, char** argv)
     }
 
     render3D_free(&render);
-    array_free(&scenes);
-    array_free(&scene_files);
+    vector_free(&scenes);
+    vector_free(&scene_files);
 
     if (first_path) {
         if (open) {

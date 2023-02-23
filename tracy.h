@@ -1,3 +1,28 @@
+
+/*  Copyright (c) 2023 Eugenio Arteaga A.
+
+Permission is hereby granted, free of charge, to any 
+person obtaining a copy of this software and associated 
+documentation files (the "Software"), to deal in the 
+Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to 
+permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice 
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.  */
+
 #ifndef TRACY_TRACER_H
 #define TRACY_TRACER_H
 
@@ -16,15 +41,15 @@ tracy path tracer
 #include <photon/photon.h>
 #include <imgtool/imgtool.h>
 
-/* tracy's configurations */
+/* tracy configurations */
 
-#define TRACY_PERF
-#define TRACY_MAX_DEPTH 4
+// #define TRACY_PERF /* performance logging (better for cli version) */
+#define TRACY_MAX_DEPTH 8
 #define TRACY_MIN_DIST 0.001f
 #define TRACY_MAX_DIST 1.0e7f
 #define TRACY_OCTREE_LIMIT 8
 
-/* tracy's structs */
+/* tracy structs */
 
 typedef struct Material {
     enum MatType {
@@ -58,22 +83,22 @@ typedef struct Cam3D {
 typedef struct Oct3D {
     Box3D box;
     struct Oct3D* children;
-    array_t triangles;
+    struct vector triangles;
 } Oct3D;
 
 typedef struct Model3D {
-    array_t triangles;
+    struct vector triangles;
     Oct3D octree;
 } Model3D;
 
 typedef struct Scene3D {
     Cam3D cam;
-    array_t materials;
-    array_t spheres;
-    array_t sphere_materials;
-    array_t triangles;
-    array_t triangle_materials;
-    array_t models;
+    struct vector materials;
+    struct vector spheres;
+    struct vector sphere_materials;
+    struct vector triangles;
+    struct vector triangle_materials;
+    struct vector models;
     vec3 background_color;
 } Scene3D;
 
@@ -87,7 +112,7 @@ typedef struct Render3D {
     uint32_t timer;
 } Render3D;
 
-/* tracy's API */
+/* tracy */
 
 double time_clock();
 
@@ -119,7 +144,7 @@ Oct3D oct3D_from_mesh(const Tri3D* triangles, const size_t count);
 bool oct3D_hit(const Oct3D* oct, const Ray3D* ray, Hit3D* hit, float closest);
 void oct3D_free(Oct3D* oct);
 
-int tracy_error(const char* str);
+int tracy_error(const char* str, ...);
 int tracy_version(void);
 int tracy_help(const int runtime);
 int tracy_log_render3D(const Render3D* render);

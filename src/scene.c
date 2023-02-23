@@ -21,12 +21,12 @@ static Scene3D* scene3D_new(void)
 {
     Scene3D* scene = malloc(sizeof(Scene3D));
 
-    scene->materials = array_create(sizeof(Material));
-    scene->spheres = array_create(sizeof(Sphere));
-    scene->sphere_materials = array_create(sizeof(size_t));
-    scene->triangles = array_create(sizeof(Tri3D));
-    scene->triangle_materials = array_create(sizeof(size_t)); 
-    scene->models = array_create(sizeof(Model3D*));
+    scene->materials = vector_create(sizeof(Material));
+    scene->spheres = vector_create(sizeof(Sphere));
+    scene->sphere_materials = vector_create(sizeof(size_t));
+    scene->triangles = vector_create(sizeof(Tri3D));
+    scene->triangle_materials = vector_create(sizeof(size_t)); 
+    scene->models = vector_create(sizeof(Model3D*));
     scene->background_color = vec3_new(0.2, 0.2, 1.0);
     
     return scene;
@@ -114,7 +114,7 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
 
             oct3D_free(&model->octree);
             model->octree = oct3D_from_mesh(model->triangles.data, model->triangles.size);
-            array_push(&scene->models, &model);
+            vector_push(&scene->models, &model);
 
         }
         else if (!strcmp(token, "sky") || !strcmp(token, "background")) {
@@ -150,7 +150,7 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
                 }
                 sscanf(token, "%f", f++);
             }
-            array_push(&scene->materials, &m);
+            vector_push(&scene->materials, &m);
         }
         else if (!strcmp(token, "s") || !strcmp(token, "sphere")) {
             
@@ -163,7 +163,7 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
 
             size_t material_index;
             sscanf(token, "%zu", &material_index);
-            array_push(&scene->sphere_materials, &material_index);
+            vector_push(&scene->sphere_materials, &material_index);
             
             Sphere s = {{0.0, 0.0, 0.0}, 1.0};
             float *f = (float*)&s;  
@@ -175,7 +175,7 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
                 }
                 sscanf(token, "%f", f++);
             }
-            array_push(&scene->spheres, &s);
+            vector_push(&scene->spheres, &s);
         }
         else if (!strcmp(token, "t") || !strcmp(token, "triangle")) {
             token = strtok(NULL, symbols);
@@ -187,7 +187,7 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
 
             size_t material_index;
             sscanf(token, "%zu", &material_index);
-            array_push(&scene->triangle_materials, &material_index);
+            vector_push(&scene->triangle_materials, &material_index);
             
             Tri3D tri = {_vec3_uni(0.0), _vec3_uni(0.0), _vec3_uni(0.0)};
             float *f = (float*)&tri;
@@ -199,7 +199,7 @@ Scene3D* scene3D_load(const char* filename, const float aspect)
                 }
                 sscanf(token, "%f", f++);
             }
-            array_push(&scene->triangles, &tri);
+            vector_push(&scene->triangles, &tri);
         }
         else if (!strcmp(token, "lookfrom") || !strcmp(token, "origin")) {
             token = strtok(NULL, symbols);
@@ -433,12 +433,12 @@ void scene3D_free(Scene3D* scene)
         model3D_free(models[i]);
     }
 
-    array_free(&scene->models);
-    array_free(&scene->triangles);
-    array_free(&scene->triangle_materials);
-    array_free(&scene->spheres);
-    array_free(&scene->sphere_materials);
-    array_free(&scene->materials);
+    vector_free(&scene->models);
+    vector_free(&scene->triangles);
+    vector_free(&scene->triangle_materials);
+    vector_free(&scene->spheres);
+    vector_free(&scene->sphere_materials);
+    vector_free(&scene->materials);
 
     free(scene);
 }

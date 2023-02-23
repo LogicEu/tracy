@@ -1,24 +1,52 @@
 #include <tracy.h>
 
-static inline float schlick(const float cos, float ri)
+static inline float schlick(float ri, float cos)
 {
-    ri = (1.0f - ri) / (1.0f + ri);
-    ri = ri * ri;
-    return ri + (1.0f - ri) * powf(1.0 - cos, 5.0);
+    ri = (1.0F - ri) / (1.0F + ri);
+    ri *= ri;
+    return ri + (1.0F - ri) * powf(1.0F - cos, 5.0F);
+}
+
+float vec3_reflect_fresnel(float n1, float n2, vec3 normal, vec3 incident, float f0, float f90)
+{
+        float x, cos, ret, r0 = (n1 - n2) / (n1 + n2);
+        
+        r0 *= r0;
+        cos = -vec3_dot(normal, incident);
+        
+        if (n1 > n2) {
+            float n = n1 / n2;
+            float sin = n * n * (1.0F - cos * cos);
+            if (sin > 1.0F)
+                return f90;
+            cos = sqrtf(1.0F - sin);
+        }
+
+        x = 1.0F - cos;
+        ret = r0 + (1.0F - r0) * x * x * x * x * x;
+        return lerpf(f0, f90, ret);
 }
 
 static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, const Ray3D* restrict ray, Hit3D* restrict rec, vec3* attenuation, Ray3D* restrict scattered, vec3* restrict outLight)
 {
-    *outLight = (vec3){0.0, 0.0, 0.0};
-    const vec3 P = _ray3D_at(ray, rec->t);
+    const vec3 pos = _ray3D_at(ray, rec->t);
+    *outLight = (vec3){0.0F, 0.0F, 0.0F};
     
     if (mat->type == Lambert) {
         
         // random point inside unit sphere that is tangent to the hit point
-        const vec3 target = vec3_add(P, vec3_add(rec->normal, vec3_rand()));
-        *scattered = ray3D_new(P, vec3_normal(_vec3_sub(target, P)));
-        *attenuation = mat->albedo;
+        vec3 dir = vec3_add(rec->normal, vec3_rand());
+        dir = vec3_normal(dir);
 
+        if (frand_norm() < vec3_reflect_fresnel(1.0F, 1.0F, rec->normal, ray->dir, mat->ri, 1.0F)) {
+            *scattered = ray3D_new(pos, vec3_normal(vec3_lerp(vec3_reflect(ray->dir, rec->normal), dir, mat->roughness * mat->roughness)));
+            *attenuation = mat->albedo;
+        }
+        else {
+            *scattered = ray3D_new(pos, dir);
+            *attenuation = mat->albedo;
+        }
+        
         // sample lights
         const size_t* indices = scene->sphere_materials.data;
         const Material* materials = scene->materials.data;
@@ -29,19 +57,19 @@ static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, co
             const size_t n = indices[i];
             const Material* smat = materials + n;
             
-            if ((smat->emissive.x <= 0.0 && smat->emissive.y <= 0.0 && 
-                smat->emissive.z <= 0.0) || mat == smat) {
+            if ((smat->emissive.x <= 0.0F && smat->emissive.y <= 0.0F && 
+                smat->emissive.z <= 0.0F) || mat == smat) {
                 continue;
             }
             
             // create a random direction towards sphere
             // coord system for sampling: sw, su, sv
-            vec3 sw = vec3_normal(_vec3_sub(s->pos, P));
-            vec3 su = vec3_normal(vec3_cross(_absf(sw.x) > 0.01f ? _vec3_new(0.0, 1.0, 0.0) : _vec3_new(1.0, 0.0, 0.0), sw));
+            vec3 sw = vec3_normal(_vec3_sub(s->pos, pos));
+            vec3 su = vec3_normal(vec3_cross(_absf(sw.x) > 0.01F ? _vec3_new(0.0F, 1.0F, 0.0F) : _vec3_new(1.0F, 0.0F, 0.0F), sw));
             vec3 sv = _vec3_cross(sw, su);
             // sample sphere by solid angle
-            float cosAMax = sqrtf(1.0f - s->radius * s->radius / vec3_sqmag(_vec3_sub(P, s->pos)));
-            float eps1 = randf_norm(), eps2 = randf_norm();
+            float cosAMax = sqrtf(1.0f - s->radius * s->radius / vec3_sqmag(_vec3_sub(pos, s->pos)));
+            float eps1 = frand_norm(), eps2 = frand_norm();
             float cosA = 1.0f - eps1 + eps1 * cosAMax;
             float sinA = sqrtf(1.0f - cosA * cosA);
             float phi = 2.0 * M_PI * eps2;
@@ -51,21 +79,24 @@ static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, co
             // shoot shadow ray
             Hit3D lightHit;
             size_t hitID;
-            Ray3D r = {P, l};
+            Ray3D r = {pos, l};
 
             if (scene3D_hit(scene, &r, &lightHit, &hitID) && hitID == n) {
                 float omega = 2.0 * (1.0 - cosAMax);
-                vec3 nl = _vec3_dot(rec->normal, ray->dir) < 0 ? rec->normal : _vec3_neg(rec->normal);
+                vec3 nl = _vec3_dot(rec->normal, ray->dir) < 0.0 ? rec->normal : _vec3_neg(rec->normal);
                 *outLight = vec3_add(*outLight, vec3_mult(vec3_prod(mat->albedo, smat->emissive), _maxf(0.0f, _vec3_dot(l, nl)) * omega));
             }
         }
     }
     else if (mat->type == Metal) {
-        vec3 refl = vec3_reflect(ray->dir, rec->normal);
         // reflected ray, and random inside of sphere based on roughness
-        *scattered = ray3D_new(P, vec3_normal(vec3_add(refl, vec3_mult(vec3_rand(), mat->roughness))));
+        vec3 refl = vec3_reflect(ray->dir, rec->normal);
+        *scattered = ray3D_new(
+            pos, 
+            vec3_normal(vec3_add(refl, vec3_mult(vec3_rand(), mat->roughness)))
+        );
         *attenuation = mat->albedo;
-        return _vec3_dot(scattered->dir, rec->normal) > 0.0f;
+        //return _vec3_dot(scattered->dir, rec->normal) > 0.0f;
     }
     else if (mat->type == Dielectric) {
         vec3 outwardN;
@@ -86,11 +117,13 @@ static bool ray3D_scatter(const Scene3D* scene, const Material* restrict mat, co
         }
         
         if (vec3_refract(ray->dir, outwardN, nint, &refr)) {
-            reflProb = schlick(cosine, mat->ri);
+            reflProb = schlick(mat->ri, cosine);
         } else reflProb = 1.0f;
         
-        if (randf_norm() < reflProb) *scattered = ray3D_new(P, vec3_normal(refl));
-        else *scattered = ray3D_new(P, vec3_normal(refr));
+        if (frand_norm() < reflProb) {
+            *scattered = ray3D_new(pos, vec3_normal(refl));
+        }
+        else *scattered = ray3D_new(pos, vec3_normal(refr));
     }
     else return false;
 
@@ -111,7 +144,7 @@ vec3 ray3D_trace(const Scene3D* restrict scene, const Ray3D* restrict ray, const
         } else return mat->emissive;
     } else {
         // Sky
-        float t = clampf(ray->dir.y, 0.1, 1.0);
+        float t = (ray->dir.y + 1.0F) * 0.5F * 0.3F + 0.3F;
         return _vec3_mult(scene->background_color, t);
     }
 }

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <pthread.h>
 
-#define CLMPF(x) ((x) * ((x) < 1.0) + (float)((x) >= 1.0))
+#define CLMPF(x) ((x) * ((x) < 1.0) * ((x) > 0.0) + (float)((x) >= 1.0))
 
 typedef struct JobInfo {
     Render3D* render;
@@ -21,6 +21,14 @@ static JobInfo render3D_job_info(const Render3D* restrict render, const Scene3D*
     job.start = start;
     job.end = end;
     return job;
+}
+
+__attribute__((__unused__))
+static inline vec3 vec3_tonemap(const vec3 x)
+{
+    vec3 A = vec3_prod(x, vec3_add(vec3_mult(x, 2.51f), vec3_uni(0.03f)));
+    vec3 B = vec3_add(vec3_prod(x, vec3_add(vec3_mult(x, 2.43f), vec3_uni(0.59f))), vec3_uni(0.14f));
+    return _vec3_op(A, /, B);
 }
 
 static void* render3D_render_job(void* arg)
@@ -56,17 +64,18 @@ static void* render3D_render_job(void* arg)
         for (uint32_t x = 0; x < job.render->width; ++x) {
             vec3 col = {0.0, 0.0, 0.0};
             for (uint32_t s = 0; s < spp; s++) {
-                float u = ((float)x + randf_norm()) * invWidth;
-                float v = ((float)y + randf_norm()) * invHeight;
+                float u = ((float)x + frand_norm()) * invWidth;
+                float v = ((float)y + frand_norm()) * invHeight;
                 Ray3D r = cam3D_ray(&job.scene->cam, u, v);
                 col = vec3_add(col, ray3D_trace(job.scene, &r, 0));
             }
-            col = _vec3_mult(col, invSpp);
-            col = _vec3_new(sqrtf(col.x), sqrtf(col.y), sqrtf(col.z));
+
+            col = (vec3){sqrtf(col.x * invSpp), sqrtf(col.y * invSpp), sqrtf(col.z * invSpp)};
             
-            vec3 prev = vec3_new((float)backbuffer[0] / 255.0, (float)backbuffer[1] / 255.0, (float)backbuffer[2] / 255.0);
+            vec3 prev = {(float)backbuffer[0] / 255.0, (float)backbuffer[1] / 255.0, (float)backbuffer[2] / 255.0};
             col = vec3_add(_vec3_mult(prev, prevFac), _vec3_mult(col, colFac));
-            
+            //col = vec3_tonemap(col);
+
             backbuffer[0] = (unsigned)(CLMPF(col.x) * 255.0);
             backbuffer[1] = (unsigned)(CLMPF(col.y) * 255.0);
             backbuffer[2] = (unsigned)(CLMPF(col.z) * 255.0);

@@ -29,7 +29,7 @@ void cam3D_update(Cam3D* restrict cam)
 Ray3D cam3D_ray(const Cam3D* restrict cam, const float s, const float t)
 {
     const float k = cam->aperture * 0.5;
-    vec2 rd = {randf_signed() * k, randf_signed() * k};
+    vec2 rd = {frand_signed() * k, frand_signed() * k};
     vec3 offset = vec3_add(vec3_mult(cam->params.u, rd.x), _vec3_mult(cam->params.v, rd.y));
     vec3 p = _vec3_add(cam->lookFrom, offset);
     return ray3D_new(p, vec3_normal(vec3_sub(vec3_add(cam->params.lowerLeftCorner, vec3_add(_vec3_mult(cam->params.horizontal, s), _vec3_mult(cam->params.vertical, t))), p)));

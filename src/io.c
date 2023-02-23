@@ -1,12 +1,16 @@
 #include <tracy.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 static const char* string_separator = "--------------------------------------------------------------------------------------------\n";
 
-int tracy_error(const char* str)
+int tracy_error(const char* fmt, ...)
 {
-    fprintf(stderr, "%s", str);
+    va_list ap;
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
     return EXIT_FAILURE;
 }
 

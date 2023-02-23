@@ -1,62 +1,72 @@
 # tracy makefile
 
-STD=-std=c99
-WFLAGS=-Wall -Wextra
-OPT=-O2
-IDIR=-I. -Ispxe
-LIBS=mass fract utopia photon imgtool
-CC=gcc
-NAME=tracy
-SRC=src/*.c
+NAME = tracy
+CLINAME = tracy_cli
 
-CLI=main_cli.c
-RUN=main_run.c
+CC = gcc
+STD = -std=c99
+WFLAGS = -Wall -Wextra -pedantic
+OPT = -O2
+INC = -I.
+LIB = utopia fract photon mass imgtool
 
-LDIR=lib
-IDIR += $(patsubst %,-I%/,$(LIBS))
-LSTATIC=$(patsubst %,lib%.a,$(LIBS))
-LPATHS=$(patsubst %,$(LDIR)/%,$(LSTATIC))
-LFLAGS=$(patsubst %,-L%,$(LDIR))
-LFLAGS += $(patsubst %,-l%,$(LIBS))
-LFLAGS += -lz -lpng -ljpeg
-GL=-lglfw
+RTSRC = rt.c
+CLISRC = cli.c
 
-SCRIPT=build.sh
+SRCDIR = src
+TMPDIR = tmp
+LIBDIR = lib
+
+SCRIPT = build.sh
+
+SRC = $(wildcard $(SRCDIR)/*.c)
+OBJS = $(patsubst $(SRCDIR)/%.c,$(TMPDIR)/%.o,$(SRC))
+LIBS = $(patsubst %,$(LIBDIR)/lib%.a,$(LIB))
+DLIB = $(patsubst %,-L%, $(LIBDIR))
+DLIB += $(patsubst %,-l%, $(LIB))
+INC += $(patsubst %,-I%,$(LIB))
+INC += -Ispxe
+
+DLIB += -lz -lpng -ljpeg
+OPNGL = -lglfw
 
 OS=$(shell uname -s)
 ifeq ($(OS),Darwin)
-    #OSFLAGS=-mmacos-version-min=10.10
-    GL+=-framework OpenGL
-else 
-	OSFLAGS=-lm -lpthread -D_POSIX_C_SOURCE=199309L
-    GL+=-lGL -lGLEW
+	OPNGL += -framework OpenGL
+else
+	DLIB += -lm
+	OPNGL += -lGL -lGLEW
 endif
 
-CFLAGS=$(STD) $(WFLAGS) $(OPT) $(IDIR)
+CFLAGS = $(STD) $(WFLAGS) $(OPT) $(INC)
 
-$(NAME): $(LPATHS) $(SRC)
-	$(CC) -o $@ $(SRC) $(CLI) $(CFLAGS) $(LFLAGS) $(OSFLAGS)
+$(NAME): $(OBJS) $(LIBS) $(RTSRC)
+	$(CC) $(CFLAGS) $(DLIB) $(OPNGL) $(OBJS) $(RTSRC) -o $@
 
-$(LDIR)/$(LDIR)%.a: $(LDIR)%.a $(LDIR)
-	mv $< $(LDIR)/
+.PHONY: cli all clean
 
-$(LDIR): 
-	@[ -d $@ ] || mkdir $@ && echo "mkdir $@"
+$(CLINAME): $(OBJS) $(LIBS) $(CLISRC)
+	$(CC) $(CFLAGS) $(DLIB) $(OBJS) $(CLISRC) -o $(CLINAME)
 
-$(LDIR)%.a: %
-	cd $^ && make && mv $@ ../
+cli: $(CLINAME)
 
-cli:
-	$(CC) -o $(NAME) $(SRC) $(CLI) $(CFLAGS) $(LFLAGS) $(OSFLAGS)
+all: $(NAME) $(CLINAME)
 
-run:
-	$(CC) -o $(NAME) $(SRC) $(RUN) $(CFLAGS) $(LFLAGS) $(GL) $(OSFLAGS)
+$(LIBDIR)/lib%.a: %
+	cd $^ && $(MAKE) && mv bin/*.a ../$(LIBDIR)
+
+$(LIBS): | $(LIBDIR)
+
+$(TMPDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJS): | $(TMPDIR)
+
+$(TMPDIR):
+	mkdir -p $@
+
+$(LIBDIR):
+	mkdir -p $@
 
 clean: $(SCRIPT)
 	./$^ $@
-    
-install: $(SCRIPT)
-	./$^ $@
- 
-uninstall: $(SCRIPT)
-	./$^ $@ 

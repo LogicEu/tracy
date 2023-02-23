@@ -1,18 +1,18 @@
 [submodule "imgtool"]
 	path = imgtool
-	url = git@github.com:LogicEu/imgtool.git
+	url = https://github.com/LogicEu/imgtool.git
 [submodule "mass"]
 	path = mass
-	url = git@github.com:LogicEu/mass.git
+	url = https://github.com/LogicEu/mass.git
 [submodule "utopia"]
 	path = utopia
-	url = git@github.com:LogicEu/utopia.git
+	url = https://github.com/LogicEu/utopia.git
 [submodule "fract"]
 	path = fract
-	url = git@github.com:LogicEu/fract.git
+	url = https://github.com/LogicEu/fract.git
 [submodule "photon"]
 	path = photon
-	url = git@github.com:LogicEu/photon.git
+	url = https://github.com/LogicEu/photon.git
 [submodule "spxe"]
 	path = spxe
-	url = git@github.com:LogicEu/spxe.git
+	url = https://github.com/LogicEu/spxe.git

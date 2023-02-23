@@ -5,7 +5,7 @@
 #define SPXE_APPLICATION
 #include <spxe.h>
 
-#define HALF_PI (M_PI * 0.5)
+#define HALF_PI (M_PI * 0.5F)
 
 static void cam3D_point(Cam3D* cam, vec3* dir, vec3* right, const int x, const int y)
 {
@@ -21,9 +21,10 @@ static void cam3D_point(Cam3D* cam, vec3* dir, vec3* right, const int x, const i
     cam->lookAt = vec3_add(cam->lookFrom, *dir);
 }
 
-int main(const int argc, char** argv) 
+int main(const int argc, const char** argv) 
 {   
-    char* scenePath = NULL, outPath[BUFSIZ] = "image.png";
+    const char* scenePath = NULL;
+    char outPath[BUFSIZ] = "image.png";
     Render3D render = render3D_new(200, 150, 1);
     
     for (int i = 1; i < argc; ++i) {
@@ -37,46 +38,46 @@ int main(const int argc, char** argv)
             if (++i < argc) {
                 uint32_t w = (uint32_t)atoi(argv[i]);
                 if (!w || w > 3840) {
-                    return tracy_error("-w option cannot be smaller than 1 or larger than 3840.\n");
+                    return tracy_error("%s option cannot be smaller than 1 or larger than 3840.\n", argv[i]);
                 } 
                 else render.width = w;
             } 
-            else return tracy_error("Missing input for option -w. See -help for more information.\n");
+            else return tracy_error("Missing input for option %s. See -help for more information.\n", argv[i]);
         }
         else if (!strcmp(argv[i], "-h")) {
             if (++i < argc) {
                 uint32_t h = (uint32_t)atoi(argv[i]);
                 if (!h || h > 2160) {
-                    return tracy_error("-h option cannot be smaller than 1 or larger than 2160.\n");
+                    return tracy_error("%s option cannot be smaller than 1 or larger than 2160.\n", argv[i]);
                 } 
                 else render.height = h;
             } 
-            else return tracy_error("Missing input for option -h. See -help for more information.\n");
+            else return tracy_error("Missing input for option %s. See -help for more information.\n", argv[i]);
         }
         else if (!strcmp(argv[i], "-j")) {
             if (++i < argc) {
                 uint32_t j = (uint32_t)atoi(argv[i]);
                 if (!j || j > 128) {
-                    return tracy_error("-j option cannot be smaller than 1 or larger than 128.\n");
+                    return tracy_error("%s option cannot be smaller than 1 or larger than 128.\n", argv[i]);
                 }
                 else render.threads = j;
             }
-            else return tracy_error("Missing input for option -j. See -help for more information.\n");
+            else return tracy_error("Missing input for option %s. See -help for more information.\n", argv[i]);
         }
         else if (!strcmp(argv[i], "-spp")) {
             if (++i < argc) {
                 render.spp = (uint32_t)atoi(argv[i]);
                 if (!render.spp) {
-                    return tracy_error("-spp option cannot be smaller than 1.\n");
+                    return tracy_error("%s option cannot be smaller than 1.\n", argv[i]);
                 }
             }
-            else return tracy_error("Missing input for option -spp. See -help for more information.\n");
+            else return tracy_error("Missing input for option %s. See -help for more information.\n", argv[i]);
         }
         else if (!strcmp(argv[i], "-o")) {
             if (++i < argc) {
                 strcpy(outPath, argv[i]);
             }
-            else return tracy_error("Missing input for option -o. See -help for more information.\n");
+            else return tracy_error("Missing input for option %s. See -help for more information.\n", argv[i]);
         }
         else scenePath = argv[i];
     }
@@ -100,8 +101,9 @@ int main(const int argc, char** argv)
     vec3 dir, right;
     int mousex = 0, mousey = 0, x, y;
     spxeMousePos(&mousex, &mousey);
-    //spxeMouseVisible(0);
     cam3D_point(&scene->cam, &dir, &right, mousex, mousey);
+
+    Material* const mat = scene->materials.data;
 
     while (spxeRun(pixbuf)) {
         double t = spxeTime();
@@ -148,6 +150,97 @@ int main(const int argc, char** argv)
             render.timer = 0;
         }
 
+        if (spxeKeyDown(M)) {
+            mat->ri += 0.01;
+            printf("Ri: %f\n", mat->ri);
+            render.timer = 0;
+        }
+        if (spxeKeyDown(N)) {
+            mat->ri -= 0.01;
+            printf("Ri: %f\n", mat->ri);
+            render.timer = 0;
+        }
+        if (spxeKeyDown(J)) {
+            mat->roughness += 0.01;
+            printf("Ro: %f\n", mat->roughness);
+            render.timer = 0;
+        }
+        if (spxeKeyDown(K)) {
+            mat->roughness -= 0.01;
+            printf("Ro: %f\n", mat->roughness);
+            render.timer = 0;
+        }
+        if (spxeKeyDown(LEFT_SHIFT)) {
+            if (spxeKeyDown(R)) {
+                if (spxeKeyDown(RIGHT) || spxeKeyDown(UP)) {
+                    mat->albedo.x += 0.01;
+                    render.timer = 0;
+                }
+                if (spxeKeyDown(LEFT) || spxeKeyDown(DOWN)) {
+                    mat->albedo.x -= 0.01;
+                    render.timer = 0;
+                }
+            }
+            if (spxeKeyDown(G)) {
+                if (spxeKeyDown(RIGHT) || spxeKeyDown(UP)) {
+                    mat->albedo.y += 0.01;
+                    render.timer = 0;
+                }
+                if (spxeKeyDown(LEFT) || spxeKeyDown(DOWN)) {
+                    mat->albedo.y -= 0.01;
+                    render.timer = 0;
+                }
+            }
+            if (spxeKeyDown(B)) {
+                if (spxeKeyDown(RIGHT) || spxeKeyDown(UP)) {
+                    mat->albedo.z += 0.01;
+                    render.timer = 0;
+                }
+                if (spxeKeyDown(LEFT) || spxeKeyDown(DOWN)) {
+                    mat->albedo.z -= 0.01;
+                    render.timer = 0;
+                }
+            }
+        }
+        if (spxeKeyDown(E)) {
+            if (spxeKeyDown(R)) {
+                if (spxeKeyDown(RIGHT) || spxeKeyDown(UP)) {
+                    mat->emissive.x += 0.01;
+                    render.timer = 0;
+                }
+                if (spxeKeyDown(LEFT) || spxeKeyDown(DOWN)) {
+                    mat->emissive.x -= 0.01;
+                    render.timer = 0;
+                }
+            }
+            if (spxeKeyDown(G)) {
+                if (spxeKeyDown(RIGHT) || spxeKeyDown(UP)) {
+                    mat->emissive.y += 0.01;
+                    render.timer = 0;
+                }
+                if (spxeKeyDown(LEFT) || spxeKeyDown(DOWN)) {
+                    mat->emissive.y -= 0.01;
+                    render.timer = 0;
+                }
+            }
+            if (spxeKeyDown(B)) {
+                if (spxeKeyDown(RIGHT) || spxeKeyDown(UP)) {
+                    mat->emissive.z += 0.01;
+                    render.timer = 0;
+                }
+                if (spxeKeyDown(LEFT) || spxeKeyDown(DOWN)) {
+                    mat->emissive.z -= 0.01;
+                    render.timer = 0;
+                }
+            }
+        }
+        if (spxeKeyPressed(U)) {
+            ++mat->type;
+            if (mat->type > Dielectric) {
+                mat->type = Lambert;
+            }
+        }
+
         if (spxeKeyPressed(P)) {
             bmp_t bmp = {render.width, render.height, 4, render.buffer};
             bmp = bmp_flip_vertical(&bmp);
@@ -178,7 +271,7 @@ int main(const int argc, char** argv)
         render3D_render(&render, scene);
         ++render.timer;
 
-        printf("%lf\n", dT);
+        //printf("%lf\n", dT);
     }
 
     scene3D_free(scene);
