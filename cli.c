@@ -46,6 +46,13 @@ static void tracy_to_mp4(const char* path)
     system(command);
 }
 
+void scene3D_update(Scene3D* restrict scene)
+{
+    scene->cam.lookFrom.x += 0.2f;
+    scene->cam.focusDist = vec3_dist(scene->cam.lookFrom, scene->cam.lookAt) - 0.3;
+    cam3D_update(&scene->cam);
+}
+
 static int tracy_render_scene(Render3D* restrict render, Scene3D* restrict scene, const char* restrict output_path)
 {
     char image_name[BUFSIZ];
@@ -91,9 +98,9 @@ static int tracy_render_scene(Render3D* restrict render, Scene3D* restrict scene
         bmp_t bmp = render3D_bmp(render, scene);
         bmp_write(image_name, &bmp);
         bmp_free(&bmp);
-        //scene3D_update(scene);
+	    scene3D_update(scene);
 
-        ++render->timer;
+        /* ++render->timer; */
 
         if (!first_path) {
             first_path = tstrdup(image_name);
