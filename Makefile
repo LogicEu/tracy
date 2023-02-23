@@ -8,7 +8,7 @@ STD = -std=c99
 WFLAGS = -Wall -Wextra -pedantic
 OPT = -O2
 INC = -I.
-LIB = utopia fract photon mass imgtool
+LIB = photon mass fract utopia imgtool
 
 RTSRC = rt.c
 CLISRC = cli.c
@@ -34,19 +34,19 @@ OS=$(shell uname -s)
 ifeq ($(OS),Darwin)
 	OPNGL += -framework OpenGL
 else
-	DLIB += -lm
+	DLIB += -lm -lpthread
 	OPNGL += -lGL -lGLEW
 endif
 
 CFLAGS = $(STD) $(WFLAGS) $(OPT) $(INC)
 
 $(NAME): $(OBJS) $(LIBS) $(RTSRC)
-	$(CC) $(CFLAGS) $(DLIB) $(OPNGL) $(OBJS) $(RTSRC) -o $@
+	$(CC) $(OBJS) $(RTSRC) -o $@ $(CFLAGS) $(DLIB) $(OPNGL)
 
 .PHONY: cli all clean
 
 $(CLINAME): $(OBJS) $(LIBS) $(CLISRC)
-	$(CC) $(CFLAGS) $(DLIB) $(OBJS) $(CLISRC) -o $(CLINAME)
+	$(CC) $(OBJS) $(CLISRC) -o $@ $(CFLAGS) $(DLIB)
 
 cli: $(CLINAME)
 

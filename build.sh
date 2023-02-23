@@ -53,7 +53,6 @@ elif echo "$OSTYPE" | grep -q "linux"; then
     lib+=(
         -lm
         -lpthread
-        -D_POSIX_C_SOURCE=199309L
     )
 else
     echo "This OS is not supported by this shell script yet..." && exit
