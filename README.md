@@ -34,7 +34,8 @@
 
 ## Third Party Dependencies
 
-> The main dependencies are very common:
+> The main dependencies are common image format libraries needed by
+> [imgtool](https://github.com/LogicEu/imgtool.git).
 
 * [libjpeg](https://github.com/thorfdbg/libjpeg.git)
 * [libpng](https://github.com/glennrp/libpng.git)
