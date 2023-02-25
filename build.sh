@@ -15,23 +15,21 @@ flags=(
     -std=c99
 )
 
+sub=(
+    utopia
+    imgtool
+    fract
+    photon
+    mass
+)
+
 inc=(
     -I.
-    -Iimgtool
-    -Ifract
-    -Iutopia
-    -Imass
-    -Iphoton
     -Ispxe
 )
 
 lib=(
     -Llib
-    -limgtool
-    -lfract
-    -lmass
-    -lutopia
-    -lphoton
     -lz
     -lpng
     -ljpeg
@@ -40,6 +38,14 @@ lib=(
 opngl=(
     -lglfw
 )
+
+for mod in ${sub[*]}
+do
+    inc+=(-I$mod)
+    lib+=(-l$mod)
+done
+
+echo "${lib[*]}"
 
 if echo "$OSTYPE" | grep -q "darwin"; then
     opngl+=(
@@ -68,11 +74,10 @@ lib_build() {
 
 build() {
     cmd mkdir -p lib/
-    lib_build utopia static
-    lib_build fract static
-    lib_build imgtool static
-    lib_build mass static
-    lib_build photon static
+    for mod in ${sub[*]} 
+    do
+        lib_build $mod static
+    done
 }
 
 objs() {
@@ -103,11 +108,10 @@ cleanr() {
 }
 
 clean() {
-    cleanr imgtool
-    cleanr utopia
-    cleanr fract
-    cleanr photon
-    cleanr mass
+    for mod in ${sub[*]}
+    do
+        cleanr $mod
+    done
 
     cleand lib
     cleand tmp
