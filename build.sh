@@ -16,11 +16,11 @@ flags=(
 )
 
 sub=(
-    utopia
     imgtool
     fract
-    photon
     mass
+    utopia
+    photon
 )
 
 inc=(
