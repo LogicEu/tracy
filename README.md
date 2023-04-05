@@ -25,7 +25,7 @@
 
 ## Submodules
 
-* [utopia](https://github.com/LogicEu/utopia.git) Collection data structures in C
+* [utopia](https://github.com/LogicEu/utopia.git) Collection of data structures in C
 * [fract](https://github.com/LogicEu/fract.git) 2D and 3D math for graphics and games
 * [photon](https://github.com/LogicEu/photon.git) Shapes and intersection algorithms
 * [mass](https://github.com/LogicEu/mass.git) 3D model loader library
