@@ -45,8 +45,6 @@ do
     lib+=(-l$mod)
 done
 
-echo "${lib[*]}"
-
 if echo "$OSTYPE" | grep -q "darwin"; then
     opngl+=(
         -framework OpenGL
